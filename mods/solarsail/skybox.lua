@@ -1,0 +1,262 @@
+-- SolarSail Engine Skybox Handler:
+-- Author: Jordach
+-- License: Reserved
+
+-- Pre-Init:
+
+solarsail.skybox.is_paused = false
+
+solarsail.skybox.regions = {}
+solarsail.skybox.regions.pos_1 = {}
+solarsail.skybox.regions.pos_2 = {}
+solarsail.skybox.regions.skybox = {}
+
+solarsail.skybox.skybox_defs = {}
+solarsail.skybox.cloud_defs = {}
+
+--[[ solarsail.skybox.register_region(skybox_name, position_1, position_2)
+
+API spec for changing the skybox based on position:
+
+skybox_name = "name_of_skybox"
+position_1 = {x =  1, y = 0, z = 0}
+position_2 = {x = -1, y = 1, z = 10}
+
+Note: Preferrably as game_skyboxname or mod_skyboxname
+]]--
+
+function solarsail.skybox.register_region(skybox_name, position_1, position_2)
+	solarsail.skybox.regions.pos_1[skybox_name] = position_1
+	solarsail.skybox.regions.pos_2[skybox_name] = position_2
+	solarsail.skybox.regions.skybox[skybox_name] = skybox_name
+end
+
+--[[ solarsail.skybox.register_skybox(skybox_name, skybox_defs, cloud_defs)
+
+API spec for registering clouds based on position:
+
+skybox_defs table:
+	skybox_defs.textures = {1, 2, 3, 4, 5, 6}
+	skybox_defs.type = "regular", "bgcolor", "skybox"
+	skybox_defs.bgcolor = "#rrggbb"
+	skybox_defs.clouds = true, false
+
+cloud_defs table:
+	cloud_defs.density: 0 to 1
+	cloud_defs.color: "#rrggbbaa"
+	cloud_defs.ambient: "#rrggbb"
+	cloud_defs.height: -31000 to 31000
+	cloud_defs.thickness: 0.01 to 31000
+	cloud_defs.x = -128 to 128
+	cloud_defs.y = -128 to 128
+
+Note: Preferrably as game_skyboxname or mod_skyboxname
+]]--
+
+function solarsail.skybox.register_skybox(skybox_name, skybox_defs, cloud_defs)
+	solarsail.skybox.skybox_defs[skybox_name] = skybox_defs
+	solarsail.skybox.cloud_defs[skybox_name] = cloud_defs
+end
+
+--[[ solarsail.skybox.override_skybox(skybox_defs, cloud_defs, player)
+
+API spec for temporarily overriding skyboxes:
+
+skybox_defs table:
+	skybox_defs.textures = {"1", "2", "3", "4", "5", "6"}
+	skybox_defs.type = "regular", "bgcolor", "skybox"
+	skybox_defs.bgcolor = "#rrggbb"s
+	skybox_defs.clouds = true, false
+
+cloud_defs table:
+	cloud_defs.density: 0 to 1
+	cloud_defs.color: "#rrggbbaa"
+	cloud_defs.ambient: "#rrggbb"
+	cloud_defs.height: -31000 to 31000
+	cloud_defs.thickness: 0.01 to 31000
+	cloud_defs.x = -128 to 128
+	cloud_defs.y = -128 to 128
+
+player is a PlayerRef created by the Minetest Engine.
+]]--
+
+function solarsail.skybox.override_skybox(skybox_defs, cloud_defs, player)
+	solarsail.skybox.is_paused = true
+	player:set_sky(
+		skybox_defs.bgcolor,
+		skybox_defs.type,
+		skybox_defs.textures,
+		skybox_defs.clouds
+	)
+	player:set_clouds({
+		density = cloud_defs.density,
+		color = cloud_defs.color,
+		ambient = cloud_defs.ambient,
+		height = cloud_defs.height,
+		thickness = cloud_defs.thickness,
+		speed = {x = cloud_defs.x, cloud_defs.y}
+	})
+end
+
+
+--[[ solarsail.skybox.restore_skybox()
+	Resume paused skybox functionality from overrides
+]]--
+
+function solarsail.skybox.restore_skybox()
+	solarsail.skybox.is_paused = false
+	solarsail_render_sky()
+end
+
+-- Simplified inbetween check:
+
+local function inbetween(lower, upper, val)
+	if val >= lower and val <= upper then
+		return true
+	else 
+		return false
+	end
+end
+
+-- Compare skybox settings against the new ones:
+
+local function compare_sky(skybox_defs, one, two, three)
+	-- Compare bgcolor to supplied bgcolor:
+	local bgcolor = minetest.rgba(one.r, one.g, one.b)
+	if bgcolor ~= skybox_defs.bgcolor then return true end
+
+	-- Compare skybox types:
+	if two ~= skybox_defs.type then return true end
+	
+	-- If we happen to be now using "skybox" do so here - otherwise we ignore it and flag it as changed
+	if skybox_defs.type == "skybox" and three == "skybox" then
+		for k, v in pairs(three) do
+			if v ~= skybox_defs.textures[k] then
+				return true
+			end
+		end
+	end
+
+	return false -- if somehow we get here by mistake
+end
+
+-- Compare cloud settings against the new ones:
+
+local function compare_clouds(cloud_defs, player_clouds) -- Speed of clouds aren't changed as they're considered a changing value, eg wind
+	-- Compare cloud densities:
+	if cloud_defs.density ~= player_clouds.density then return true end
+
+	-- Compare base color:
+	if cloud_defs.color ~= minetest.rgba(
+		player_clouds.color.r,
+		player_clouds.color.g,
+		player_clouds.color.b,
+		player_clouds.color.a
+	) then return true end
+
+	-- Compare "ambiance colour"
+	if cloud_defs.ambient ~= minetest.rgba(
+		player_clouds.ambient.r,
+		player_clouds.ambient.g,
+		player_clouds.ambient.b,
+		player_clouds.ambient.a
+	) then return true end
+
+	-- Compare height
+	if cloud_defs.height ~= player_clouds.height then return true end
+
+	-- Compare thiccness
+	if cloud_defs.thickness ~= player_clouds.thickness then return true end
+
+	return false -- if somehow none of these values are considered changed
+end
+
+-- Change skybox for "connected players here":
+
+local function solarsail_render_sky()
+	if solarsail.skybox.is_paused then
+	else
+		for _, player in ipairs(minetest.get_connected_players()) do
+			local ppos = player:get_pos()
+			local isx, isy, isz = false
+			-- Iterate over a table full of names
+			for k, v in pairs(solarsail.skybox.regions.skybox) do
+				if inbetween(solarsail.skybox.regions.pos_1[v].x, solarsail.skybox.regions.pos_2[v].x, ppos.x) then
+					isx = true
+				end
+				if inbetween(solarsail.skybox.regions.pos_1[v].y, solarsail.skybox.regions.pos_2[v].y, ppos.y) then
+					isy = true
+				end
+				if inbetween(solarsail.skybox.regions.pos_1[v].z, solarsail.skybox.regions.pos_2[v].z, ppos.z) then
+					isz = true
+				end
+				if isx and isy and isz then
+					local sky_1, sky_2, sky_3 = player:get_sky()
+					if compare_sky(solarsail.skybox.skybox_defs[v], sky_1, sky_2, sky_3) then
+						player:set_sky(
+							solarsail.skybox.skybox_defs[v].bgcolor,
+							solarsail.skybox.skybox_defs[v].type,
+							solarsail.skybox.skybox_defs[v].textures,
+							solarsail.skybox.skybox_defs[v].clouds
+						)
+					end
+					if compare_clouds(solarsail.skybox.cloud_defs[v], player:get_clouds()) then
+						player:set_clouds({
+							density = solarsail.skybox.cloud_defs[v].density,
+							color = solarsail.skybox.cloud_defs[v].color,
+							ambient = solarsail.skybox.cloud_defs[v].ambient,
+							height = solarsail.skybox.cloud_defs[v].height,
+							thickness = solarsail.skybox.cloud_defs[v].thickness,
+							speed = {x = solarsail.skybox.cloud_defs[v].x, solarsail.skybox.cloud_defs[v].y}
+						})
+					end
+					break
+				else
+					isx, isy, isz = false
+				end
+			end
+		end
+		minetest.after(0.1, solarsail_render_sky)
+	end
+end
+
+local player_count = 0
+
+minetest.register_on_joinplayer(function(player)
+	-- magic values to make comparisons work, as MT does not provide defaults
+	player:set_sky("#ffffff", "regular", {"eror.png"}, true)
+	solarsail_render_sky()
+
+	-- Prevent player handling freaking out; but this may change in future
+	player_count = player_count + 1
+	if player_count > 1 then
+		--minetest.kick_player(player:get_player_name(), "[SolarSail]: Singleplayer only, multiplayer disallowed.")
+	end
+end)
+
+minetest.register_on_leaveplayer(function(player)
+	player_count = player_count - 1
+end)
+
+solarsail.skybox.register_skybox("paramat_theory",
+	{
+		bgcolor = {r = 0, g = 0, b = 0, a = 0},
+		type = "plain",
+		textures = {},
+		clouds = false
+	},
+	{}
+)
+
+solarsail.skybox.register_region("paramat_theory", 
+	{
+		x = -31000,
+		y = -31000,
+		z = -31000
+	},
+	{
+		x = 31000,
+		y = 31000,
+		z = 31000
+	}
+)
