@@ -53,7 +53,7 @@ formname:
 	formname[7] = "mod_yourresponse", used by minetest.register_on_player_receive_fields()
 
 --]]
-function solarsail.hud.render_chat(player_ref, state, hud_theme, portrait, name, message, formname)
+function solarsail.hud.render_chat(player_ref, state, escaped, hud_theme, portrait, name, message, formname)
 	-- Keep a copy of last used in case of nil arguments
 	if hud_theme ~= nil then solarsail.hud.active_chat.theme[player_ref:get_player_name()] = hud_theme end
 	if message ~= nil then solarsail.hud.active_chat.message[player_ref:get_player_name()] = message end
@@ -62,7 +62,7 @@ function solarsail.hud.render_chat(player_ref, state, hud_theme, portrait, name,
 	if formname ~= nil then solarsail.hud.active_chat.formname[player_ref:get_player_name()] = formname end
 	-- Build initial formspec:
 	local formspec = "formspec_version[1]"..
-					"size[8, 2;false]".. 
+					"size[8, 2.75;false]".. 
 					"position[0.5, 0.8]"..
 					"container[1.25,0]" ..
 					"bgcolor[#00000000;neither]"..
@@ -109,9 +109,14 @@ function solarsail.hud.render_chat(player_ref, state, hud_theme, portrait, name,
 		end
 	end
 
-	-- Render hypertext chat to the main formspec
-	formspec = formspec .. "hypertext[0.15, 1.35;8, 2;solarsail_chat;" .. 
-		minetest.formspec_escape(solarsail.hud.active_chat.message[player_ref:get_player_name()][state]) .."]"
+	-- Render hypertext chat to the main formspec as escaped formspecs:
+	if escaped then
+		formspec = formspec .. "hypertext[0.15, 1.45;8, 2;solarsail_chat;" .. 
+			minetest.formspec_escape(solarsail.hud.active_chat.message[player_ref:get_player_name()][state]) .."]"
+	else -- Kind of dangerous but we'll roll with it.
+		formspec = formspec .. "hypertext[0.15, 1.45;8, 2;solarsail_chat;" .. 
+			solarsail.hud.active_chat.message[player_ref:get_player_name()][state] .."]"
+	end
 	
 	minetest.show_formspec(
 		player_ref:get_player_name(),
@@ -119,3 +124,22 @@ function solarsail.hud.render_chat(player_ref, state, hud_theme, portrait, name,
 		formspec .. "container_end[]"
 	)
 end
+
+-- Retarded engine decisions require more retarded decisions to make it useful:
+local prepend = "style_type[button;noclip=true]"..
+				"style_type[checkbox;noclip=true]"..
+				"style_type[scrollbar;noclip=true]"..
+				"style_type[table;noclip=true]"..
+				"style_type[textlist;noclip=true]"..
+				"style_type[dropdown;noclip=true]"..
+				"style_type[field;noclip=true]"..
+				"style_type[textarea;noclip=true]"..
+				"style_type[label;noclip=true]"..
+				"style_type[image_button;noclip=true]"..
+				"style_type[item_image_button;noclip=true]"..
+				"style_type[tab_header;noclip=true]"..
+				"style_type[hypertext;noclip=true]"
+
+minetest.register_on_joinplayer(function(player)
+	player:set_formspec_prepend(prepend)
+end)

@@ -14,24 +14,7 @@ solarsail.skybox.regions.skybox = {}
 solarsail.skybox.skybox_defs = {}
 solarsail.skybox.cloud_defs = {}
 
---[[ solarsail.skybox.register_region(skybox_name, position_1, position_2)
-
-API spec for changing the skybox based on position:
-
-skybox_name = "name_of_skybox"
-position_1 = {x =  1, y = 0, z = 0}
-position_2 = {x = -1, y = 1, z = 10}
-
-Note: Preferrably as game_skyboxname or mod_skyboxname
-]]--
-
-function solarsail.skybox.register_region(skybox_name, position_1, position_2)
-	solarsail.skybox.regions.pos_1[skybox_name] = position_1
-	solarsail.skybox.regions.pos_2[skybox_name] = position_2
-	solarsail.skybox.regions.skybox[skybox_name] = skybox_name
-end
-
---[[ solarsail.skybox.register_skybox(skybox_name, skybox_defs, cloud_defs)
+--[[ solarsail.skybox.register_skybox(skybox_name, skybox_defs, cloud_defs, pos_1, pos_2)
 
 API spec for registering clouds based on position:
 
@@ -50,12 +33,18 @@ cloud_defs table:
 	cloud_defs.x = -128 to 128
 	cloud_defs.y = -128 to 128
 
+position_1 = {x =  1, y = 0, z = 0}
+position_2 = {x = -1, y = 1, z = 10}
+
 Note: Preferrably as game_skyboxname or mod_skyboxname
 ]]--
 
-function solarsail.skybox.register_skybox(skybox_name, skybox_defs, cloud_defs)
+function solarsail.skybox.register_skybox(skybox_name, skybox_defs, cloud_defs, pos_1, pos_2)
 	solarsail.skybox.skybox_defs[skybox_name] = skybox_defs
 	solarsail.skybox.cloud_defs[skybox_name] = cloud_defs
+	solarsail.skybox.regions.pos_1[skybox_name] = pos_1
+	solarsail.skybox.regions.pos_2[skybox_name] = pos_2
+	solarsail.skybox.regions.skybox[skybox_name] = skybox_name
 end
 
 --[[ solarsail.skybox.override_skybox(skybox_defs, cloud_defs, player)
@@ -238,17 +227,16 @@ minetest.register_on_leaveplayer(function(player)
 	player_count = player_count - 1
 end)
 
-solarsail.skybox.register_skybox("paramat_theory",
+solarsail.skybox.register_skybox("default",
 	{
-		bgcolor = {r = 0, g = 0, b = 0, a = 0},
-		type = "plain",
-		textures = {},
-		clouds = false
+		-- ["top"] = "#676891", ["bottom"] = "#c79161", ["base"] = "#a17268", ["light"] = 0.15} sunrise = #ffae5f horizon = #404164
+		bgcolor = "#a17268",
+		type = "regular",
+		clouds = true
 	},
-	{}
-)
-
-solarsail.skybox.register_region("paramat_theory", 
+	{
+		density = 0.34
+	},
 	{
 		x = -31000,
 		y = -31000,

@@ -69,8 +69,8 @@ function solarsail.player.set_model(player_ref, model_name, anim, framerate,
 
 	-- Construct a player entity at the player's position:
 	local pos = player_ref:get_pos()
-	local entity = minetest.add_entity(pos, model_name)
-	solarsail.player.model.entity_ref[player_ref:get_player_name()] = entity
+	solarsail.player.model.entity_ref[player_ref:get_player_name()] = minetest.add_entity(pos, model_name)
+
 	-- Get LuaObject:
 	local entity_lua = solarsail.player.model.entity_ref[player_ref:get_player_name()]:get_luaentity()
 
@@ -95,9 +95,18 @@ function solarsail.player.set_model(player_ref, model_name, anim, framerate,
 	player_ref:set_attach(entity_lua.object, attach_bone, relative_pos, relative_rotation)
 end
 
-function solarsail.player.set_properties(player_ref, entity_properties)
-	solarsail.player.model.entity_ref[player_ref:get_player_name()]:set_properties()
+-- Wrapper for Lua_SAO:set_properties()
+function solarsail.player.set_properties(player_name, changes)
+	solarsail.player.model.entity_ref[player_name]:set_properties(changes)
 end
+
+-- Wrapper for Lua_SAO:get_properties()
+function solarsail.player.get_properties(player_name)
+	return solarsail.player.model.entity_ref[player_name]:get_properties()
+end
+
+--store PI for quicker use:
+local pi = math.pi
 
 -- Supply a boolean value to go backwards, otherwise, forwards
 function solarsail.util.functions.yaw_to_vec(rads, mult, backwards)
@@ -112,9 +121,9 @@ end
 
 -- Get left or right direction, supply a boolean to go left.
 function solarsail.util.functions.yaw_to_vec_side(rads, mult, left)
-	local nrads = rads + math.pi/2
+	local nrads = rads + pi/2
 	if left then
-		nrads = rads - math.pi/2
+		nrads = rads - pi/2
 	end
 	local x = (math.cos(nrads) * -1) * mult
 	local z = math.sin(nrads) * mult
@@ -123,12 +132,10 @@ end
 
 -- Convert our x, z vectors to a nice radian:
 function solarsail.util.functions.vec_to_rad(x, z)
-	local nx = x - 0
-	local nz = z - 0
-	return math.atan2(nz, nx)
+	return math.atan2(z, x)
 end
 
 -- Quickly convert degrees to radians:
 function solarsail.util.functions.deg_to_rad(deg)
-	return deg * (3.142/180)
+	return deg * (pi/180)
 end

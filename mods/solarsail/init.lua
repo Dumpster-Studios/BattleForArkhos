@@ -13,8 +13,10 @@ solarsail.player = {}
 solarsail.npc = {}
 solarsail.battle = {}
 solarsail.hud = {}
-solarsail.save_data = minetest.get_mod_storage()
+solarsail.cosmetic = {}
+solarsail.color = {}
 solarsail.util = {}
+solarsail.util.clipboard = {}
 solarsail.util.functions = {}
 
 -- Handle flat mapgen, for building a world
@@ -25,14 +27,18 @@ minetest.register_node("solarsail:wireframe", {
 	groups = {debug=1}
 })
 
-minetest.register_alias("mapgen_stone", "solarsail:wireframe")
-minetest.register_alias("mapgen_grass", "solarsail:wireframe")
-minetest.register_alias("mapgen_water_source", "solarsail:wireframe")
-minetest.register_alias("mapgen_river_water_source", "solarsail:wireframe")
+--minetest.register_alias("mapgen_stone", "solarsail:wireframe")
+--minetest.register_alias("mapgen_grass", "solarsail:wireframe")
+--minetest.register_alias("mapgen_water_source", "solarsail:wireframe")
+--minetest.register_alias("mapgen_river_water_source", "solarsail:wireframe")
 
 -- Sava data handling (per-player):
 
---dofile(minetest.get_modpath("solarsail").."/save.lua")
+dofile(minetest.get_modpath("solarsail").."/save.lua")
+
+-- HSVA->RGBA->HSVA handling:
+
+dofile(minetest.get_modpath("solarsail").."/colour.lua")
 
 -- HUD rendering and formspec handling:
 
@@ -44,7 +50,7 @@ dofile(minetest.get_modpath("solarsail").."/hud.lua")
 
 -- Start skybox engine:
 
-dofile(minetest.get_modpath("solarsail").."/skybox.lua")
+--dofile(minetest.get_modpath("solarsail").."/skybox.lua")
 
 -- Control handling for HUDs, player entity, etc:
 
@@ -54,7 +60,7 @@ dofile(minetest.get_modpath("solarsail").."/control.lua")
 
 dofile(minetest.get_modpath("solarsail").."/player.lua")
 
--- NPC functionality, chat systems;
+-- Basic, advanced NPC AI;
 
 --dofile(minetest.get_modpath("solarsail").."/npc.lua")
 
