@@ -37,6 +37,37 @@ function solarsail.util.functions.xz_amount(rads)
 	return math.sin(rads+(pi/2))
 end
 
+function solarsail.util.functions.get_3d_angles(vector_a, vector_b)
+	-- Takes vector based velocities or positions (as vec_a to vec_b)
+
+	-- Does the usual Pythagoras bullshit:
+	local x_dist = vector_a.x - vector_b.x + 1
+	local z_dist = vector_a.z - vector_b.z + 1
+	local hypo = math.sqrt(x_dist^2 + z_dist^2)
+
+	-- But here's the kicker: we're not using tangents here; nono;
+	-- we're using Opposite and Hypotenuse calculations, as it
+	-- produces the nicest 180 degree arc.
+	local xz_angle = math.asin(x_dist/hypo)
+	
+	-- For the pitch angle we do it very similar, but use the 
+	-- Hypotenuse as the Adjacent side, and the Y distance as the
+	-- Opposite, so arctangents are needed.
+	local y_dist = vector_a.y - vector_b.y
+	local y_angle = math.atan(y_dist/hypo)
+
+	-- For some unknown fucking reason, when z_dist are positive,
+	-- the radians produced by arcsine are invalid and need to
+	-- be inverted, as well as the Y angle.
+
+	-- This is a dirty fucking hack, but it is what it is.
+	if z_dist < 0 then
+		return xz_angle, -y_angle
+	else
+		return -xz_angle, y_angle
+	end
+end
+
 function solarsail.util.functions.apply_recoil(player, weapon)
 	local yaw_rad = player:get_look_horizontal()
 	local pitch_rad = player:get_look_vertical()
@@ -124,10 +155,6 @@ function weapons.update_killfeed(player, dead_player, weapon, dist)
 		.. ", (" .. (math.floor(dist * figs + 0.5) / 100) .. "m)")
 	end
 
-	
-	
-	
-	
 	minetest.show_formspec(tname, "death", form)
 end
 
@@ -140,9 +167,7 @@ end
 
 function weapons.respawn_player(player, respawn)
 	local pname = player:get_player_name()
-	local x = 0
-	local z = 0
-	local y = 0 
+	local x, y, z = 0
 	local blu = 192-42
 	if weapons.player_list[pname].team == "red" then
 		x = math.random(168, 176)
@@ -435,26 +460,36 @@ local function shoot(player, weapon)
 		local pointed = ray:next()
 		pointed = ray:next()
 		local target_pos
-		
+
 		if weapon._type == nil then
 		elseif weapon._type == "gun" then
-			local yp = solarsail.util.functions.y_direction(player:get_look_vertical(), 20)
-			local px, pz = solarsail.util.functions.yaw_to_vec(player:get_look_horizontal(), 20, false)
-			local pv = vector.add(raybegin, {x=px, y=yp, z=pz})
-			local pr = vector.add(pv, raymod)
+			if weapon._tracer == nil then
+			else
+				local tracer_pos = vector.add(
+					vector.add(player:get_pos(), vector.new(0, 1.2, 0)), 
+						vector.multiply(player:get_look_dir(), 1)
+				)
+				local yp = solarsail.util.functions.y_direction(player:get_look_vertical(), 20)
+				local px, pz = solarsail.util.functions.yaw_to_vec(player:get_look_horizontal(), 20, false)
+				local pv = vector.add(raybegin, {x=px, y=yp, z=pz})
+				local pr = vector.add(pv, raymod)
 
+				local tracer_vel = vector.add(
+					vector.multiply(vector.direction(pv, pr), 120), 
+						vector.new(0, 0.44, 0)
+				)
+				
+				local xz, y = solarsail.util.functions.get_3d_angles(
+					vector.add(player:get_pos(), vector.new(0, 1.64, 0)),
+					vector.add(tracer_pos, tracer_vel)				
+				)
 
-			-- Replace with entity
-			minetest.add_particle({
-				pos = vector.add(raygunbegin, vector.multiply(player:get_look_dir(), 1)),
-				velocity = vector.add(vector.multiply(vector.direction(pv, pr), 90), vector.new(0, 0.44, 0)),
-				expirationtime = 10,
-				collisiondetection = true,
-				collision_removal = true,
-				texture = "tracer.png",
-				size = 2,
-				glow = 12
-			})
+				local ent = minetest.add_entity(tracer_pos, 
+								"weapons:tracer_" .. weapon._tracer)
+
+				ent:set_velocity(tracer_vel)
+				ent:set_rotation(vector.new(y, xz, 0))
+			end
 		end
 
 		if pointed == nil then
@@ -470,7 +505,7 @@ local function shoot(player, weapon)
 				target_pos = pointed.under
 			end
 		end
-
+		
 		-- Calculate time to target and distance to target;
 		if target_pos == nil then
 		else
@@ -508,12 +543,18 @@ local function shoot(player, weapon)
 
 end
 
+local health_pos = {x=0.325, y=0.825}
+local ammo_pos = {x=0.675, y=0.825}
+local player_phys = {}
+
 minetest.register_on_joinplayer(function(player)
-	player_timers[player:get_player_name()] = {}
-	player_timers[player:get_player_name()].fire = 0
-	player_timers[player:get_player_name()].reload = 0
-	is_reloading[player:get_player_name()] = false
-	player_fov[player:get_player_name()] = 120
+	local pname = player:get_player_name()
+	player_timers[pname] = {}
+	player_timers[pname].fire = 0
+	player_timers[pname].reload = 0
+	is_reloading[pname] = false
+	player_fov[pname] = 120
+	player_phys[pname] = 1
 	player:hud_set_flags({
 		hotbar = true,
 		healthbar = false,
@@ -523,78 +564,96 @@ minetest.register_on_joinplayer(function(player)
 		minimap = false,
 		minimap_radar = false
 	})
-	player_huds[player:get_player_name()] = {}
-	player_huds[player:get_player_name()].crosshair = player:hud_add({
+
+	player_huds[pname] = {}
+
+	player_huds[pname].crosshair = player:hud_add({
 		hud_elem_type = "image",
 		position = {x=0.5, y=0.5},
 		scale = {x=1, y=1},
 		text = "transparent.png"
 	})
 
-	player_huds[player:get_player_name()].hp_1 = player:hud_add({
+	player_huds[pname].ammo_bg = player:hud_add({
 		hud_elem_type = "image",
-		position = {x=0.425, y=0.75},
-		offset = {x=-100, y=0},
-		scale = {x=1, y=1},
-		text = "transparent.png"
-	})
-	player_huds[player:get_player_name()].hp_2 = player:hud_add({
-		hud_elem_type = "image",
-		position = {x=0.425, y=0.75},
-		offset = {x=-50, y=0},
-		scale = {x=1, y=1},
-		text = "transparent.png"
-	})
-	player_huds[player:get_player_name()].hp_3 = player:hud_add({
-		hud_elem_type = "image",
-		position = {x=0.425, y=0.75},
+		position = ammo_pos,
+		offset = {x=65, y=0},
 		scale = {x=1, y=1},
 		text = "transparent.png"
 	})
 
-	player_huds[player:get_player_name()].ammo_1 = player:hud_add({
+	player_huds[pname].hp_bg = player:hud_add({
 		hud_elem_type = "image",
-		position = {x=0.575, y=0.75},
+		position = health_pos,
+		offset = {x=-55, y=12},
 		scale = {x=1, y=1},
 		text = "transparent.png"
 	})
-	player_huds[player:get_player_name()].ammo_2 = player:hud_add({
+
+	player_huds[pname].hp_1 = player:hud_add({
 		hud_elem_type = "image",
-		position = {x=0.575, y=0.75},
+		position = health_pos,
+		offset = {x=-100, y=0},
+		scale = {x=1, y=1},
+		text = "transparent.png"
+	})
+	player_huds[pname].hp_2 = player:hud_add({
+		hud_elem_type = "image",
+		position = health_pos,
+		offset = {x=-50, y=0},
+		scale = {x=1, y=1},
+		text = "transparent.png"
+	})
+	player_huds[pname].hp_3 = player:hud_add({
+		hud_elem_type = "image",
+		position = health_pos,
+		scale = {x=1, y=1},
+		text = "transparent.png"
+	})
+
+	player_huds[pname].ammo_1 = player:hud_add({
+		hud_elem_type = "image",
+		position = ammo_pos,
+		scale = {x=1, y=1},
+		text = "transparent.png"
+	})
+	player_huds[pname].ammo_2 = player:hud_add({
+		hud_elem_type = "image",
+		position = ammo_pos,
 		offset = {x=50, y=0},
 		scale = {x=1, y=1},
 		text = "transparent.png"
 	})
-	player_huds[player:get_player_name()].ammo_s = player:hud_add({
+	player_huds[pname].ammo_s = player:hud_add({
 		hud_elem_type = "image",
-		position = {x=0.575, y=0.75},
+		position = ammo_pos,
 		offset = {x=100, y=0},
 		scale = {x=1, y=1},
 		text = "transparent.png"
 	})
-	player_huds[player:get_player_name()].ammo_m1 = player:hud_add({
+	player_huds[pname].ammo_m1 = player:hud_add({
 		hud_elem_type = "image",
-		position = {x=0.575, y=0.75},
+		position = ammo_pos,
 		offset = {x=150, y=0},
 		scale = {x=1, y=1},
 		text = "transparent.png"
 	})
-	player_huds[player:get_player_name()].ammo_m2 = player:hud_add({
+	player_huds[pname].ammo_m2 = player:hud_add({
 		hud_elem_type = "image",
-		position = {x=0.575, y=0.75},
+		position = ammo_pos,
 		offset = {x=200, y=0},
 		scale = {x=1, y=1},
 		text = "transparent.png"
 	})
 
-	player_huds[player:get_player_name()].reloading = player:hud_add({
+	player_huds[pname].reloading = player:hud_add({
 		hud_elem_type = "image",
 		position = {x=0.5, y=0.6},
 		scale = {x=1, y=1},
 		text = "transparent.png"
 	})
 
-	player_huds[player:get_player_name()].hitmarker = player:hud_add({
+	player_huds[pname].hitmarker = player:hud_add({
 		hud_elem_type = "image",
 		position = {x=0.5, y=0.5},
 		scale = {x=1, y=1},
@@ -636,7 +695,7 @@ local function reload_controls()
 				local wield = player:get_wielded_item():get_name()
 				local weapon = minetest.registered_nodes[wield]
 				if weapon == nil then
-				elseif weapon._type == "gun" then
+				elseif weapon._type == "gun" or weapon._type == "rocket" then
 					if not is_reloading[player:get_player_name()] then
 						if weapons.player_list[pname].primary ~=
 								weapons.player_list[pname].primary_max then
@@ -731,7 +790,7 @@ local function render_hud()
 			
 			if weapon == nil then
 			elseif weapon._type == nil then
-			elseif weapon._type == "gun" then
+			elseif weapon._type == "gun" or weapon._type == "rocket" then
 				if weapons.player_list[player:get_player_name()].primary > 9 then
 					local a1 = tostring(weapons.player_list[player:get_player_name()].primary):sub(1,1)
 					local a2 = tostring(weapons.player_list[player:get_player_name()].primary):sub(2,2)
@@ -959,6 +1018,18 @@ local function render_hud()
 					weapons.player_list[pname].cross = weapon._crosshair
 				end
 			end
+
+			if weapon._ammo_bg == nil then
+				if weapons.player_list[pname].ammo_bg ~= "transparent" then
+					player:hud_change(player_huds[pname].ammo_bg, "text", "transparent.png")
+					weapons.player_list[pname].ammo_bg = "transparent"
+				end
+			else
+				if weapons.player_list[pname].ammo_bg ~= weapon._ammo_bg then
+					player:hud_change(player_huds[pname].ammo_bg, "text", weapon._ammo_bg .. ".png^[opacity:200")
+					weapons.player_list[pname].ammo_bg = weapon._ammo_bg
+				end
+			end
 		end
 	end
 	minetest.after(0.01, render_hud)
@@ -974,7 +1045,6 @@ local function alternate_mode()
 				if weapon == nil then
 				elseif weapon._alt_mode == nil then
 				else
-					print(wield, weapon._alt_mode)
 					player:set_wielded_item(ItemStack(weapon._alt_mode .. " 1"))
 				end
 			end
@@ -1009,7 +1079,7 @@ minetest.after(1, handle_fov)
 
 local function handle_alt_physics()
 	for _, player in ipairs(minetest.get_connected_players()) do
-		local wield = player:get_wielded_item()
+		local wield = player:get_wielded_item():get_name()
 		local weapon = minetest.registered_nodes[wield]
 		local pname = player:get_player_name()
 		
@@ -1018,28 +1088,24 @@ local function handle_alt_physics()
 			player:set_physics_override(
 				weapons[weapons.player_list[pname].class].physics
 			)
+			player_phys[pname] = 1
 		elseif weapon._phys_alt == nil then
 			player:set_physics_override(
 				weapons[weapons.player_list[pname].class].physics
 			)
-		elseif weapon._phys_alt == 1 then
-			player:set_physics_override(
-				weapons[weapons.player_list[pname].class].physics
-			)
-		else
-			local new_phys = table.copy(weapons[weapons.player_list[pname].class].physics)
+			player_phys[pname] = 1
+		elseif player_phys[pname] ~= weapon._phys_alt then
+			local new_phys = 
+				table.copy(weapons[weapons.player_list[pname].class].physics)
 			new_phys.speed = new_phys.speed * weapon._phys_alt
 			new_phys.jump = new_phys.jump * weapon._phys_alt
-			new_phys.sneak_glitch = false
-			new_phys.sneak = false
-			player:set_physics_override(
-				weapons[weapons.player_list[pname].class].physics
-			)
+			player:set_physics_override(new_phys)
+			player_phys[pname] = weapon._phys_alt
 		end
 	end
 	minetest.after(0.03, handle_alt_physics)
 end
---minetest.after(1, handle_alt_physics)
+handle_alt_physics()
 
 function core.spawn_item(pos, item)
 	return
@@ -1055,24 +1121,28 @@ dofile(minetest.get_modpath("weapons").."/player.lua")
 dofile(minetest.get_modpath("weapons").."/game.lua")
 dofile(minetest.get_modpath("weapons").."/mapgen.lua")
 dofile(minetest.get_modpath("weapons").."/rocketry.lua")
+dofile(minetest.get_modpath("weapons").."/tracers.lua")
 
-minetest.register_on_player_receive_fields(function(player, 
-	formname, fields)
+minetest.register_on_player_receive_fields(
+			function(player, formname, fields)
 	if formname == "class_select" then
+		local pname = player:get_player_name()
 		if fields.lefty then
-			local pname = player:get_player_name()
 			player:set_eye_offset({x=0,y=0,z=0}, {x=-15,y=-1,z=20})
 			minetest.chat_send_player(pname, "Third person camera and crosshair set to over the left shoulder.")
 			minetest.after(0.1, minetest.show_formspec,
 				player:get_player_name(), "class_select",
 				weapons.class_formspec)
 		elseif fields.righty then
-			local pname = player:get_player_name()
 			player:set_eye_offset({x=0,y=0,z=0}, {x=15,y=-1,z=20})
 			minetest.chat_send_player(pname, "Third person camera and crosshair set to over the right shoulder.")
 			minetest.after(0.1, minetest.show_formspec,
 				player:get_player_name(), "class_select",
 				weapons.class_formspec)
+		end
+		if weapons.player_list[pname].hp_bg == nil then
+			player:hud_change(player_huds[pname].hp_bg, "text", "health_bg.png^[opacity:200")
+			weapons.player_list[pname].hp_bg = true
 		end
 	end
 end)

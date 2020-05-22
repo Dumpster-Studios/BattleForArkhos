@@ -96,7 +96,6 @@ function entity_flag_blue:on_step(dtime)
 	-- apply physics
 	local velocityy = self.object:get_velocity()
 	local accel = self.object:get_acceleration()
-	
 	if velocityy.y == 0 then
 		-- Handle friction
 		self._x = self._x * 0.75

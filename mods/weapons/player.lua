@@ -92,9 +92,9 @@ weapons.scout = scout
 weapons.class_formspec =
 	"size[8,8]"..
 	"button[0,7;2,1;assault;Assault]"..
-	--"button[2,7;2,1;marksman;Marksman]"..
-	--"button[4,7;2,1;medic;Medic]"..
-	--"button[6,7;2,1;scout;Scout]"..
+	"button[2,7;2,1;marksman;Marksman]"..
+	"button[4,7;2,1;medic;Medic]"..
+	"button[6,7;2,1;scout;Scout]"..
 	"button[0,0;4,1;lefty;Left Shoulder View]"..
 	"button[4,0;4,1;righty;Right Shoulder View]"
 
@@ -388,8 +388,6 @@ local function set_skin(player, class)
 	player:set_animation({x=0, y=159}, 60, 0.1, true)
 end
 
-weapons.set_health = set_health
-
 weapons.force_anim_group = {}
 weapons.force_anim_set = {}
 
@@ -448,7 +446,7 @@ end)
 function weapons.player.set_class(player, class)
 	-- Clear inv:
 	clear_inv(player)
-	--set_player_physics(player, class)
+	set_player_physics(player, class)
 	set_health(player, class)
 	weapons.player_list[player:get_player_name()].class = class
 	set_skin(player, class)
@@ -469,7 +467,6 @@ minetest.register_chatcommand("class", {
 			pos2 = {x=-143, y=weapons.blu_base_y, z=-143}
 		end
 		local result = solarsail.util.functions.pos_to_dist(pos, pos2)
-		print(result)
 		if result < 5.5 then
 			minetest.show_formspec(name, "class_select", weapons.class_formspec)
 		else
@@ -480,6 +477,7 @@ minetest.register_chatcommand("class", {
 
 minetest.register_on_player_receive_fields(function(player, 
 		formname, fields)
+	local pname = player:get_player_name()
 	if formname == "class_select" then
 		if fields.assault then
 			weapons.player.set_class(player, "assault")
@@ -510,9 +508,6 @@ local function unlock_anim(pname)
 	anim_frame[pname] = -1
 	anim_press[pname] = "none"
 end
-
-local update_count = 0
-local update_look = 0
 
 local animation_table = {}
 
@@ -555,7 +550,6 @@ minetest.register_globalstep(function(dtime)
 			player:set_bone_position("Armature_Upper_Body", {x = 0, y = 4, z = 0}, {x = ppitch * 0.6, y = 0, z = 0})
 			player:set_bone_position("Armature_Head", {x = 0, y = 3, z = 0}, {x = ppitch * 0.25, y = 0, z = 0})
 			look_pitch[pname] = ppitch
-			--update_look = update_look + 2
 		end
 
 		if anim_frame[pname] ~= -1 then
@@ -616,12 +610,3 @@ minetest.register_globalstep(function(dtime)
 		end
 	end
 end)
-
-local function update_print()
-	print(update_count, update_look)
-	update_count = 0
-	update_look = 0
-	--minetest.after(10, update_print)
-end
-
---minetest.after(10, update_print)
