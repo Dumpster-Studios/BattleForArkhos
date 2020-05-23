@@ -340,7 +340,7 @@ local function set_skin(player, class)
 				textures = {
 					"assault_rifle.png",
 					"pickaxe.png",
-					"assault_class_blue.png",
+					"assault_class_red.png",
 				},
 				visual_size = {x=1.05, y=1.05},
 				nametag = ""
