@@ -434,7 +434,8 @@ minetest.register_on_joinplayer(function(player)
 	weapons.update_red_flag = true
 	player:set_eye_offset({x=0,y=0,z=0}, {x=15,y=-1,z=20})
 	player:set_properties({
-		textures = {"transparent.png", "transparent.png"}
+		textures = {"transparent.png", "transparent.png"},
+		collisionbox = {-0.3, 0.0, -0.3, 0.3, 1.7, 0.3}
 	})
 	anim_lock[pname] = false
 	anim_frame[pname] = -1

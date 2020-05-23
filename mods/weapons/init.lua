@@ -310,6 +310,17 @@ local function wait(pointed, player, weapon, target_pos, dist)
 			end
 		end
 	else
+		for _, players in ipairs(minetest.get_connected_players()) do
+			if player:get_player_name() ~= players:get_player_name() then
+				local ppos = players:get_pos()
+				local splash_dist = solarsail.util.functions.pos_to_dist(ppos, pointed.intersection_point)
+				if splash_dist < 0.61 then
+					weapons.handle_damage(weapon, player, players, dist)
+					return
+				end
+			end
+		end
+
 		local nodedef = minetest.registered_nodes[minetest.get_node(target_pos).name]
 
 		if weapon._type == "gun" then
