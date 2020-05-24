@@ -8,7 +8,9 @@ weapons.teams = {}
 weapons.teams.red = 0
 weapons.teams.blue = 0
 weapons.teams.red_colour = 0xFF6464
+weapons.teams.red_string = "#ff6464"
 weapons.teams.blue_colour = 0x7575FF
+weapons.teams.blue_string = "#7575ff"
 weapons.score = {}
 weapons.score.red = 0
 weapons.score.blue = 0
@@ -32,47 +34,54 @@ function weapons.assign_team(player, team)
 			if rando == 1 then
 				weapons.teams.red = weapons.teams.red + 1
 				weapons.player_list[pname].team = "red"
-				minetest.chat_send_player(pname,
-					"You have been automatically assigned to " .. weapons.team_names.red)
-				minetest.log("info", 
-					pname.. "has been automatically assigned to " .. weapons.team_names.red)
+				minetest.chat_send_all(minetest.colorize(weapons.teams.red_string, pname) ..
+										" has joined the " .. 
+										minetest.colorize(weapons.teams.red_string, weapons.team_names.red))
+				minetest.log("action", 
+					pname.. " has been automatically assigned to " .. weapons.team_names.red)
+				
 			else
 				weapons.teams.blue = weapons.teams.blue + 1
 				weapons.player_list[pname].team = "blue"
-				minetest.chat_send_player(pname,
-					"You have been automatically assigned to " .. weapons.team_names.blue)
-					minetest.log("info", 
-					pname.. "has been automatically assigned to " .. weapons.team_names.blue)
+				minetest.chat_send_all(minetest.colorize(weapons.teams.blue_string, pname) ..
+										" has joined the " .. 
+										minetest.colorize(weapons.teams.blue_string, weapons.team_names.blue))
+				minetest.log("action", 
+					pname.. " has been automatically assigned to " .. weapons.team_names.blue)
 			end
 		elseif weapons.teams.red < weapons.teams.blue then
 			weapons.teams.red = weapons.teams.red + 1
 			weapons.player_list[pname].team = "red"
-			minetest.chat_send_player(pname,
-				"You have been automatically assigned to " .. weapons.team_names.red)
-			minetest.log("info", 
-				pname.. "has been automatically assigned to " .. weapons.team_names.red)
+			minetest.chat_send_all(minetest.colorize(weapons.teams.red_string, pname) ..
+										" has joined the " .. 
+										minetest.colorize(weapons.teams.red_string, weapons.team_names.red))
+			minetest.log("action", 
+				pname.. " has been automatically assigned to " .. weapons.team_names.red)
 		elseif weapons.teams.red > weapons.teams.blue then
 			weapons.teams.blue = weapons.teams.blue + 1
 			weapons.player_list[pname].team = "blue"
-			minetest.chat_send_player(pname,
-				"You have been automatically assigned to " .. weapons.team_names.blue)
-			minetest.log("info", 
-				pname.. "has been automatically assigned to " .. weapons.team_names.blue)
+			minetest.chat_send_all(minetest.colorize(weapons.teams.blue_string, pname) ..
+										" has joined the " .. 
+										minetest.colorize(weapons.teams.blue_string, weapons.team_names.blue))
+			minetest.log("action", 
+				pname.. " has been automatically assigned to " .. weapons.team_names.blue)
 		end
 	elseif team == "blue" then
 		weapons.teams.blue = weapons.teams.blue + 1
 		weapons.player_list[pname].team = "blue"
-		minetest.chat_send_player(pname,
-			"You have been manually assigned to " .. weapons.team_names.blue)
-			minetest.log("info", 
-				pname.. "has switched to " .. weapons.team_names.blue)
+		minetest.chat_send_all(minetest.colorize(weapons.teams.blue_string, pname) ..
+										" has joined the " .. 
+										minetest.colorize(weapons.teams.blue_string, weapons.team_names.blue))
+		minetest.log("action", 
+			pname.. " has switched to " .. weapons.team_names.blue)
 	elseif team == "red" then
 		weapons.teams.red = weapons.teams.red + 1
 		weapons.player_list[pname].team = "red"
-		minetest.chat_send_player(pname,
-			"You have been manually assigned to " .. weapons.team_names.red)
-			minetest.log("info", 
-				pname.. "has switched to " .. weapons.team_names.red)
+		minetest.chat_send_all(minetest.colorize(weapons.teams.red_string, pname) ..
+										" has joined the " .. 
+										minetest.colorize(weapons.teams.red_string, weapons.team_names.red))
+		minetest.log("action", 
+			pname.. " has switched to " .. weapons.team_names.red)
 	end
 end
 

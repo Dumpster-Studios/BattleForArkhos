@@ -186,7 +186,7 @@ function entity_flag_red:on_step(dtime)
 					weapons.update_red_flag = false
 				end
 			else
-				if not self._is_held then
+				if self._is_held then
 					weapons.remove_global_waypoint("red_flag")
 					self._set_waypoint = false
 				end

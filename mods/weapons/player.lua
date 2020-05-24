@@ -539,6 +539,7 @@ animation_table.block = {}
 animation_table.block_place = {}
 
 minetest.register_globalstep(function(dtime)
+	--print("server step: " .. dtime)
 	for _, player in ipairs(minetest.get_connected_players()) do
 		local pname = player:get_player_name()
 		local wield = player:get_wielded_item():get_name()
