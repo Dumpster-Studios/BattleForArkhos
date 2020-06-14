@@ -2,11 +2,55 @@
 -- Author: Jordach
 -- License: Reserved
 
+function weapons.calc_block_damage(nodedef, weapon, target_pos, pointed)
+	if nodedef == nil then
+	elseif nodedef.name == "air" then
+		return 0, "air"
+	elseif nodedef.name == "ignore" then
+		return 0, "air"
+	elseif nodedef._health == nil then
+		weapons.spray_particles(nil, nodedef, target_pos)
+		return 0, "air"
+	else
+		local nodedamage = nodedef._health - weapon._break_hits
+		if nodedamage < 1 then
+			weapons.spray_particles(nil, nodedef, target_pos)
+			return 0, "air"
+		else
+			if pointed == nil then
+				weapons.spray_particles(nil, nodedef, target_pos)
+			else
+				weapons.spray_particles(nil, nodedef, pointed.intersection_point)
+			end
+			return nodedamage, nodedef._name.."_"..nodedamage
+		end
+	end
+end
+
+local function rocket_explode_damage_blocks(pos)
+	local bpos = table.copy(pos)
+	local weapon = table.copy(minetest.registered_nodes["weapons:rocket_launcher_red"])
+	for x=-1, 1 do
+		for y=-1, 1 do
+			for z=-1, 1 do
+				local npos = {x=bpos.x+x, y=bpos.y+y, z=bpos.z+z}
+				local nodedef = minetest.registered_nodes[minetest.get_node(npos).name]
+				if nodedef == nil then
+				elseif nodedef._takes_damage == nil then
+					weapon._break_hits = math.random(1, 4)
+					local damage, node = weapons.calc_block_damage(nodedef, weapon, npos)
+					minetest.set_node(npos, {name=node})
+				end
+			end
+		end
+	end
+end
+
 local rocket_ent = {
 	visual = "mesh",
 	mesh = "rocket_ent.obj",
 	textures = {
-		"core_cobble.png",
+		"rocket_ent.png",
 	},
 	physical = true,
 	collide_with_objects = true,
@@ -48,7 +92,7 @@ function rocket_ent:explode(self, moveresult)
 	end
 
 	local node = minetest.registered_nodes[minetest.get_node(pos).name]
-	local rocket = minetest.registered_nodes["weapons:assault_rifle_alt_red"]
+	local rocket = minetest.registered_nodes["weapons:rocket_launcher_red"]
 	local rocket_damage = table.copy(rocket)
 	for _, player in ipairs(minetest.get_connected_players()) do
 		local ppos = player:get_pos()
@@ -67,7 +111,7 @@ function rocket_ent:explode(self, moveresult)
 	end
 
 	
-	worldedit.sphere(pos_block, 1, "air", false)
+	rocket_explode_damage_blocks(pos_block)
 	for i=1, 25 do
 		minetest.add_particle({
 			pos = pos,
@@ -97,3 +141,78 @@ function rocket_ent:on_step(dtime, moveresult)
 end
 
 minetest.register_entity("weapons:rocket_ent", rocket_ent)
+
+local launcher_def_red = {
+	tiles = {"rocket_launcher.png", {name="assault_class_red.png", backface_culling=true}},
+	drawtype = "mesh",
+	mesh = "rocket_launcher_fp.b3d",
+	use_texture_alpha = true,
+	range = 1,
+	node_placement_prediction = "",
+
+
+	_reload_node = "weapons:rocket_launcher_reload_red",
+	_ammo_bg = "rocket_bg",
+	_kf_name = "Rocket Launcher",
+	_fov_mult = 0.95,
+	_crosshair = "railgun_crosshair.png",
+	_type = "rocket",
+	_ammo_type = "rocket",
+	_firing_sound = "rocket_launch",
+	_name = "rocket_launcher",
+	_mag = 1,
+	_rpm = 80,
+	_reload = 3,
+	_damage = 65,
+	_recoil = 0,
+	_phys_alt = 1,
+	_break_hits = 2,
+
+	on_place = function(itemstack, placer, pointed_thing)
+		return itemstack
+	end,
+	on_drop = function(itemstack, dropper, pointed_thing)
+		return itemstack
+	end
+}
+minetest.register_node("weapons:rocket_launcher_red", launcher_def_red)
+
+local launcher_def_blue = table.copy(launcher_def_red)
+launcher_def_blue.tiles = {"rocket_launcher.png", {name="assault_class_blue.png", backface_culling=true}}
+launcher_def_blue._reload_node = "weapons:rocket_launcher_reload_blue"
+
+minetest.register_node("weapons:rocket_launcher_blue", launcher_def_blue)
+
+local launcher_reload_red = {
+	drawtype = "mesh",
+	mesh = "rocket_launcher_reload_fp.b3d",
+	use_texture_alpha = true,
+	range = 1,
+	node_placement_prediction = "",
+	tiles = {"rocket_launcher.png", "rocket_ent.png", {name="assault_class_red.png", backface_culling=true}},
+
+	_reset_node = "weapons:rocket_launcher_red",
+	_ammo_bg = "rocket_bg",
+	_kf_name = "Rocket Launcher",
+	_damage = 0,
+	_mag = 1,
+	_fov_mult = 0.95,
+	_type = "rocket",
+	_ammo_type = "rocket",
+	_phys_alt = 0.75,
+
+	on_place = function(itemstack, placer, pointed_thing)
+		return itemstack
+	end,
+	on_drop = function(itemstack, dropper, pointed_thing)
+		return itemstack
+	end
+}
+
+minetest.register_node("weapons:rocket_launcher_reload_red", launcher_reload_red)
+
+local launcher_reload_blue = table.copy(launcher_reload_red)
+launcher_reload_blue.tiles = {"rocket_launcher.png", "rocket_ent.png", {name="assault_class_blue.png", backface_culling=true}}
+launcher_reload_blue._reset_node = "weapons:rocket_launcher_blue"
+
+minetest.register_node("weapons:rocket_launcher_reload_blue", launcher_reload_blue)

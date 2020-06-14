@@ -88,19 +88,19 @@ weapons.register_weapon("weapons:assault_rifle",
 }, 
 { -- Alt
 	drawtype = "mesh",
-	mesh = "rocket_launcher_fp.b3d", --assault_rifle_alt_fp.b3d
+	mesh = "assault_rifle_alt_fp.b3d",
 	use_texture_alpha = true,
 	range = 1,
 
-	_ammo_bg = "rocket_bg",
-	_kf_name = "Rocket Launcher",
+	_ammo_bg = "bullet_bg",
+	_kf_name = "Assault Rifle",
 	_fov_mult = 0.75,
 	_crosshair = "railgun_crosshair.png",
-	_type = "rocket", --gun
+	_type = "gun",
 	_ammo_type = "primary",
-	_firing_sound = "rocket_launch", --ass_rifle_fire
-	_casing_sound = "ass_rifle_casing", --ass_rifle_casing
-	_reload_sound = "ass_rifle_reload", --ass_rifle_reload
+	_firing_sound = "ass_rifle_fire",
+	_casing_sound = "ass_rifle_casing", 
+	_reload_sound = "ass_rifle_reload",
 	_name = "assault_rifle",
 	_pellets = 1,
 	_mag = 30,
@@ -108,13 +108,14 @@ weapons.register_weapon("weapons:assault_rifle",
 	_reload = 3,
 	_speed = 800, -- Meters per second
 	_range = 150,
-	_damage = 65,
+	_damage = 20,
 	_break_hits = 3,
-	_recoil = 0,--1.5
+	_recoil = 1.5,
 	_spread_min = 0,
 	_spread_max = 0,
 	_tracer = "ar",
-	_phys_alt = 1, --0.45
+	_phys_alt = 0.45,
+	_is_alt = true,
 
 	on_place = function(itemstack, placer, pointed_thing)
 		return itemstack
@@ -218,6 +219,7 @@ weapons.register_weapon("weapons:railgun",
 	_spread_max = 0,
 	_tracer = "railgun",
 	_phys_alt = 0.25,
+	_is_alt = true,
 
 	on_place = function(itemstack, placer, pointed_thing)
 		return itemstack
@@ -275,7 +277,7 @@ weapons.register_weapon("weapons:smg",
 	_reload_node = "weapons:smg_reload",
 	_speed = 650,
 	_range = 140,
-	_damage = 8,
+	_damage = 3,
 	_heals = 5,
 	_break_hits = 1,
 	_recoil = 1.05,
@@ -314,7 +316,7 @@ weapons.register_weapon("weapons:smg",
 	_reload_node = "weapons:smg_reload",
 	_speed = 650,
 	_range = 140,
-	_damage = 4,
+	_damage = 2,
 	_heals = 10,
 	_break_hits = 1,
 	_recoil = 0.75,
@@ -322,6 +324,7 @@ weapons.register_weapon("weapons:smg",
 	_spread_max = 4,
 	_tracer = "smg_alt",
 	_phys_alt = 0.65,
+	_is_alt = true,
 
 	on_place = function(itemstack, placer, pointed_thing)
 		return itemstack
@@ -363,6 +366,7 @@ weapons.register_weapon("weapons:shotgun",
 	range = 1,
 
 	_ammo_bg = "shotgun_bg",
+	_ammo_type = "primary",
 	_kf_name = "Shotgun",
 	_alt_mode = "weapons:shotgun_alt",
 	_fov_mult = 0,
@@ -401,6 +405,7 @@ weapons.register_weapon("weapons:shotgun",
 	range = 1,
 
 	_ammo_bg = "shotgun_bg",
+	_ammo_type = "primary",
 	_kf_name = "Shotgun",
 	_alt_mode = "weapons:shotgun",
 	_fov_mult = 0.925,
@@ -425,6 +430,7 @@ weapons.register_weapon("weapons:shotgun",
 	_spread_max = 11,
 	_tracer = "shotgun",
 	_phys_alt = 0.45,
+	_is_alt = true,
 
 	on_place = function(itemstack, placer, pointed_thing)
 		return itemstack
@@ -440,6 +446,7 @@ weapons.register_weapon("weapons:shotgun",
 	range = 1,
 
 	_ammo_bg = "shotgun_bg",
+	_ammo_type = "primary",
 	_kf_name = "Shotgun",
 	_damage = 6,
 	_tp_model = "shotgun_tp.x",
@@ -464,7 +471,8 @@ minetest.register_node(":core:team_neutral", {
 	node_placement_prediction = "",
 
 	_ammo_bg = "block_bg",
-	_alt_mode = "core:slab_neutral",
+	_ammo_type = "blocks",
+	--_alt_mode = "core:slab_neutral",
 	_fov_mult = 0,
 	_crosshair = "railgun_crosshair.png",
 	_type = "block",
@@ -475,7 +483,7 @@ minetest.register_node(":core:team_neutral", {
 	_tp_model = "cube.x",
 	_name = "block",
 	_pellets = 1,
-	_mag = 50,
+	--_mag = 50,
 	_rpm = 480,
 	_reload = 10,
 	_speed = 2000,
@@ -503,7 +511,8 @@ minetest.register_node(":core:lamp_neutral", {
 	node_placement_prediction = "",
 
 	_ammo_bg = "block_bg",
-	_alt_mode = "core:team_neutral",
+	_ammo_type = "blocks",
+	--_alt_mode = "core:team_neutral",
 	_fov_mult = 0,
 	_crosshair = "railgun_crosshair.png",
 	_node = "lamp",
@@ -514,7 +523,7 @@ minetest.register_node(":core:lamp_neutral", {
 	_tp_model = "cube.x",
 	_name = "block",
 	_pellets = 1,
-	_mag = 50,
+	--_mag = 50,
 	_rpm = 480,
 	_reload = 10,
 	_speed = 2000,
@@ -550,7 +559,8 @@ minetest.register_node(":core:slab_neutral", {
 	node_placement_prediction = "",
 
 	_ammo_bg = "block_bg",
-	_alt_mode = "core:lamp_neutral",
+	_ammo_type = "blocks",
+	--_alt_mode = "core:lamp_neutral",
 	_fov_mult = 0,
 	_crosshair = "railgun_crosshair.png",
 	_node = "slab",
@@ -561,7 +571,7 @@ minetest.register_node(":core:slab_neutral", {
 	_tp_model = "slab.x",
 	_name = "block",
 	_pellets = 1,
-	_mag = 50,
+	--_mag = 50,
 	_rpm = 480,
 	_reload = 10,
 	_speed = 2000,
@@ -593,8 +603,9 @@ minetest.register_node("weapons:pickaxe", {
 	node_placement_prediction = "",
 
 	_ammo_bg = "block_bg",
+	_ammo_type = "blocks",
 	_kf_name = "Pickaxe",
-	_alt_mode = "weapons:pickaxe_alt",
+	--_alt_mode = "weapons:pickaxe_alt",
 	_fov_mult = 0,
 	_type = "tool",
 	_crosshair = "railgun_crosshair.png",
@@ -602,7 +613,7 @@ minetest.register_node("weapons:pickaxe", {
 	_name = "pickaxe",
 	_pellets = 1,
 	_damage = 75,
-	_mag = 90,
+	--_mag = 90,
 	_rpm = 50,
 	_reload = 0.01,
 	_speed = 2000,
@@ -634,7 +645,7 @@ minetest.register_node("weapons:pickaxe_alt", {
 	node_placement_prediction = "",
 
 	_kf_name = "Entrenching Tool",
-	_alt_mode = "weapons:pickaxe",
+	--_alt_mode = "weapons:pickaxe",
 	_fov_mult = 0,
 	_type = "tool_alt",
 	_crosshair = "railgun_crosshair.png",
@@ -642,7 +653,7 @@ minetest.register_node("weapons:pickaxe_alt", {
 	_tp_model = "pickaxe_alt.x",
 	_name = "pickaxe",
 	_pellets = 1,
-	_mag = 90,
+	--_mag = 90,
 	_damage = 75,
 	_rpm = 50,
 	_reload = 0.01,
@@ -654,6 +665,7 @@ minetest.register_node("weapons:pickaxe_alt", {
 	_spread_max = 0,
 	_has_tracer = false,
 	_phys_alt = 1,
+	_is_alt = true,
 
 	on_place = function(itemstack, placer, pointed_thing)
 		return itemstack
@@ -675,6 +687,7 @@ minetest.register_node("weapons:flag_red", {
 	node_placement_prediction = "",
 	stack_max = 1,
 	
+	_ammo_bg = "flag_bg",
 	_kf_name = "motherfuckin' Red Flag",
 	_fov_mult = 0,
 	_type = "flag",
@@ -683,7 +696,7 @@ minetest.register_node("weapons:flag_red", {
 	_tp_model = "flag_tp.x",
 	_name = "flag_red",
 	_pellets = 1,
-	_mag = 90,
+	--_mag = 90,
 	_damage = 55,
 	_rpm = 50,
 	_reload = 0.01,
@@ -716,6 +729,7 @@ minetest.register_node("weapons:flag_blue", {
 	node_placement_prediction = "",
 	stack_max = 1,
 
+	_ammo_bg = "flag_bg",
 	_kf_name = "motherfuckin' Blue Flag",
 	_fov_mult = 0,
 	_type = "flag",
@@ -724,7 +738,7 @@ minetest.register_node("weapons:flag_blue", {
 	_tp_model = "flag_tp.x",
 	_name = "flag_red",
 	_pellets = 1,
-	_mag = 90,
+	--_mag = 90,
 	_damage = 75,
 	_rpm = 50,
 	_reload = 0.01,

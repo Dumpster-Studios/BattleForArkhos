@@ -6,9 +6,9 @@ weapons = {}
 worldedit = {}
 weapons.player = {}
 weapons.player_list = {}
+weapons.is_reloading = {}
 
 local player_timers = {}
-local is_reloading = {}
 local player_huds = {}
 local player_fov = {}
 
@@ -37,35 +37,29 @@ function solarsail.util.functions.xz_amount(rads)
 	return math.sin(rads+(pi/2))
 end
 
+-- Takes vector based velocities or positions (as vec_a to vec_b)
 function solarsail.util.functions.get_3d_angles(vector_a, vector_b)
-	-- Takes vector based velocities or positions (as vec_a to vec_b)
-
 	-- Does the usual Pythagoras bullshit:
 	local x_dist = vector_a.x - vector_b.x + 1
 	local z_dist = vector_a.z - vector_b.z + 1
 	local hypo = math.sqrt(x_dist^2 + z_dist^2)
 
-	-- But here's the kicker: we're not using tangents here; nono;
-	-- we're using Opposite and Hypotenuse calculations, as it
-	-- produces the nicest 180 degree arc.
-	local xz_angle = math.asin(x_dist/hypo)
+	-- But here's the kicker: we're using arctan to get the cotangent of the angle,
+	-- but also applies to *negative* numbers. In such cases where the positions
+	-- are northbound (positive z); the angle is 180 degrees off.
+	local xz_angle = -math.atan(x_dist/z_dist)
 	
 	-- For the pitch angle we do it very similar, but use the 
 	-- Hypotenuse as the Adjacent side, and the Y distance as the
 	-- Opposite, so arctangents are needed.
 	local y_dist = vector_a.y - vector_b.y
 	local y_angle = math.atan(y_dist/hypo)
-
-	-- For some unknown fucking reason, when z_dist are positive,
-	-- the radians produced by arcsine are invalid and need to
-	-- be inverted, as well as the Y angle.
-
-	-- This is a dirty fucking hack, but it is what it is.
+	
+	-- Fixes radians using south facing (-Z) radians when heading north (+Z)
 	if z_dist < 0 then
-		return xz_angle, -y_angle
-	else
-		return -xz_angle, y_angle
+		xz_angle = xz_angle - math.rad(180)
 	end
+	return xz_angle, y_angle
 end
 
 function solarsail.util.functions.apply_recoil(player, weapon)
@@ -85,6 +79,7 @@ end
 
 function solarsail.util.functions.apply_explosion_recoil(player, multiplier, origin)
 	local ppos = player:get_pos()
+	ppos.y = ppos.y + 0.5
 	local result_vel = vector.multiply(vector.direction(origin, ppos), multiplier)
 	player:add_player_velocity(result_vel)
 end
@@ -97,7 +92,7 @@ function solarsail.util.functions.pos_to_dist(pos_1, pos_2)
 	return math.sqrt(res.x*res.x + res.y*res.y + res.z*res.z)
 end
 
-local function spray_particles(pointed, nodedef, target_pos)
+function weapons.spray_particles(pointed, nodedef, target_pos)
 	local npos
 	if pointed == nil then
 		npos = table.copy(target_pos)
@@ -330,54 +325,26 @@ local function wait(pointed, player, weapon, target_pos, dist)
 
 		if nodedef == nil then
 		elseif nodedef._takes_damage == nil then
-		elseif not nodedef._takes_damage then
-			return
-		end
-
-		if nodedef == nil then
-		elseif nodedef._health == nil then
-			minetest.set_node(target_pos, {name="air"})
-			spray_particles(pointed, nodedef)
-			if weapon._type == "tool_alt" then
-				minetest.set_node({x=target_pos.x, y=target_pos.y-1, z=target_pos.z},
-					{name="air"})
-				spray_particles(nil, nodedef,
-					{x=target_pos.x, y=target_pos.y-1, z=target_pos.z})
-			end
-			minetest.check_for_falling(target_pos)
-			if weapon._type == "tool" then
-				if weapons.player_list[player:get_player_name()].blocks <
+			local damage, node = weapons.calc_block_damage(nodedef, weapon, target_pos, pointed)
+			minetest.set_node(target_pos, {name=node})
+			if damage < 1 then
+				if weapon._type == "tool" then
+					if weapons.player_list[player:get_player_name()].blocks <
 					weapons.player_list[player:get_player_name()].blocks_max then
 						weapons.player_list[player:get_player_name()].blocks =
-							weapons.player_list[player:get_player_name()].blocks + 1
-				end
-			end
-		else
-			local nodedamage = nodedef._health - weapon._break_hits
-			if nodedamage < 1 then
-				minetest.set_node(target_pos, {name="air"})
-				spray_particles(nil, nodedef, target_pos)
-				if weapon._type == "tool_alt" then
-					minetest.set_node({x=target_pos.x, y=target_pos.y-1, z=target_pos.z},
-						{name="air"})
-					spray_particles(nil, nodedef,
-						{x=target_pos.x, y=target_pos.y-1, z=target_pos.z})
-				end
-				minetest.check_for_falling(target_pos)
-				
-				if weapon._type == "tool" then
-					if weapons.player_list[player:get_player_name()].blocks < 
-						weapons.player_list[player:get_player_name()].blocks_max then
-							weapons.player_list[player:get_player_name()].blocks =
-								weapons.player_list[player:get_player_name()].blocks + 1
+						weapons.player_list[player:get_player_name()].blocks + 1
 					end
 				end
-			else
-				minetest.set_node(target_pos, {name=nodedef._name.."_"..nodedamage})
-				minetest.check_for_falling(target_pos)
-				spray_particles(pointed, nodedef)
+				if weapon._type == "tool_alt" then
+					minetest.set_node({x=target_pos.x, y=target_pos.y-1, z=target_pos.z},
+					{name="air"})
+					weapons.spray_particles(nil, nodedef,
+					{x=target_pos.x, y=target_pos.y-1, z=target_pos.z})
+				end
 			end
+			minetest.check_for_falling(target_pos)
 		end
+		
 	end
 end
 
@@ -525,6 +492,9 @@ local function shoot(player, weapon)
 			if weapon._type == "tool" then
 				minetest.after(dist/weapon._speed, wait, pointed, player,
 					weapon, target_pos, dist)
+			elseif weapon._type == "flag" then
+				minetest.after(dist/weapon._speed, wait, pointed, player,
+					weapon, target_pos, dist)
 			elseif weapon._type == "tool_alt" or weapon._type == "flag" then
 				minetest.after(dist/weapon._speed, wait, pointed, player,
 					weapon, target_pos, dist)
@@ -557,13 +527,18 @@ end
 local health_pos = {x=0.325, y=0.825}
 local ammo_pos = {x=0.675, y=0.825}
 local player_phys = {}
+local player_keys = {}
+
+local function set_keys(pname)
+	player_keys[pname] = solarsail.controls.player[pname]
+end
 
 minetest.register_on_joinplayer(function(player)
 	local pname = player:get_player_name()
 	player_timers[pname] = {}
 	player_timers[pname].fire = 0
 	player_timers[pname].reload = 0
-	is_reloading[pname] = false
+	weapons.is_reloading[pname] = {}
 	player_fov[pname] = 120
 	player_phys[pname] = 1
 	player:hud_set_flags({
@@ -577,6 +552,29 @@ minetest.register_on_joinplayer(function(player)
 	})
 
 	player_huds[pname] = {}
+	minetest.after(2, set_keys, pname)
+
+	player_huds[pname].visual_1 = player:hud_add({
+		hud_elem_type = "image",
+		position = {x=0.5, y=0.5},
+		scale = {x=-100, y=-100},
+		text = "hud_vignette.png",
+		offset = {x=0, y=-1}
+	})
+
+	player_huds[pname].visual_2 = player:hud_add({
+		hud_elem_type = "image",
+		position = health_pos,
+		scale = {x=1, y=1},
+		text = "hud_overlay_left.png",
+	})
+
+	player_huds[pname].visual_3 = player:hud_add({
+		hud_elem_type = "image",
+		position = ammo_pos,
+		scale = {x=1, y=1},
+		text = "hud_overlay_right.png"
+	})
 
 	player_huds[pname].crosshair = player:hud_add({
 		hud_elem_type = "image",
@@ -596,7 +594,7 @@ minetest.register_on_joinplayer(function(player)
 	player_huds[pname].hp_bg = player:hud_add({
 		hud_elem_type = "image",
 		position = health_pos,
-		offset = {x=-55, y=12},
+		offset = {x=0, y=12},
 		scale = {x=1, y=1},
 		text = "transparent.png"
 	})
@@ -604,20 +602,21 @@ minetest.register_on_joinplayer(function(player)
 	player_huds[pname].hp_1 = player:hud_add({
 		hud_elem_type = "image",
 		position = health_pos,
-		offset = {x=-100, y=0},
+		offset = {x=-50, y=0},
 		scale = {x=1, y=1},
 		text = "transparent.png"
 	})
 	player_huds[pname].hp_2 = player:hud_add({
 		hud_elem_type = "image",
 		position = health_pos,
-		offset = {x=-50, y=0},
+		offset = {x=0, y=0},
 		scale = {x=1, y=1},
 		text = "transparent.png"
 	})
 	player_huds[pname].hp_3 = player:hud_add({
 		hud_elem_type = "image",
 		position = health_pos,
+		offset = {x=50, y=0},
 		scale = {x=1, y=1},
 		text = "transparent.png"
 	})
@@ -674,24 +673,29 @@ end)
 
 function weapons.player.cancel_reload(player)
 	local pname = player:get_player_name()
-	is_reloading[pname] = false
+	for wname, bool in pairs(weapons.is_reloading[pname]) do
+		if bool then
+			print(wname)
+			weapons.is_reloading[pname][wname] = false
+		end
+	end
 	player:hud_change(player_huds[pname].reloading,
 		"text", "transparent.png")
 end
 
-local function finish_reload(player, weapon, new_wep)
+local function finish_reload(player, weapon, new_wep, slot, wieldname)
 	local pname = player:get_player_name()
-
-	if is_reloading[pname] then
-		is_reloading[player:get_player_name()] = false
-		if weapons.player_list[player:get_player_name()] == nil then
+	if weapons.is_reloading[pname][wieldname] then
+		weapons.is_reloading[pname][wieldname] = false
+		if weapons.player_list[pname] == nil then
 			return
 		end
-		weapons.player_list[player:get_player_name()].primary =
-			weapons.player_list[player:get_player_name()].primary_max
+		local ammo = new_wep._ammo_type
+		weapons.player_list[pname][ammo] =
+			weapons.player_list[pname][ammo.."_max"]
 		local p_inv = player:get_inventory()
-		p_inv:set_stack("main", 1, ItemStack(new_wep._reset_node.." 1"))
-		player:hud_change(player_huds[player:get_player_name()].reloading,
+		p_inv:set_stack("main", slot, ItemStack(new_wep._reset_node.." 1"))
+		player:hud_change(player_huds[pname].reloading,
 			"text", "transparent.png")
 	end
 end
@@ -700,28 +704,31 @@ local function reload_controls()
 	for _, player in ipairs(minetest.get_connected_players()) do
 		local pname = player:get_player_name()
 
-		if solarsail.controls.player[player:get_player_name()] == nil then
-		elseif solarsail.controls.player[player:get_player_name()].sneak then
-			if solarsail.controls.player[player:get_player_name()].RMB then
-				local wield = player:get_wielded_item():get_name()
-				local weapon = minetest.registered_nodes[wield]
-				if weapon == nil then
-				elseif weapon._type == "gun" or weapon._type == "rocket" then
-					if not is_reloading[player:get_player_name()] then
-						if weapons.player_list[pname].primary ~=
-								weapons.player_list[pname].primary_max then
+		if solarsail.controls.player[pname] == nil then
+		elseif solarsail.controls.player[pname].aux1 then
+			local wield = player:get_wielded_item():get_name()
+			local weapon = minetest.registered_nodes[wield]
+			if weapon == nil then
+			elseif weapon._mag ~= nil then
+				local ammo = weapon._ammo_type
+				if weapons.player_list[pname][ammo] < weapons.player_list[pname][ammo.."_max"] then
+					if weapons.player_list[pname][ammo] > 0 then
+						weapons.player_list[pname][ammo] = 0
+						if not weapons.is_reloading[pname][wield] then
+							weapons.is_reloading[pname][wield] = true
+							local p_inv = player:get_inventory()
+							local p_ind = player:get_wield_index()
+							local rel_node = minetest.registered_nodes[weapon._reload_node]
 							minetest.after(weapon._reload, finish_reload, player, weapon,
-								minetest.registered_nodes[weapon._reload_node])
-							is_reloading[player:get_player_name()] = true
+								rel_node, p_ind, wield)
 							minetest.sound_play({name=weapon._reload_sound},
 								{object=player, max_hear_distance=8, gain=0.15})
-							local p_inv = player:get_inventory()
-							p_inv:set_stack("main", 1, ItemStack(weapon._reload_node.." 1"))
 							player:hud_change(player_huds[player:get_player_name()].reloading, 
 								"text", "reloading.png")
+							p_inv:set_stack("main", p_ind, ItemStack(weapon._reload_node.." 1"))
 						end
 					end
-				end	
+				end
 			end
 		end
 	end
@@ -741,27 +748,29 @@ local function weapon_controls()
 		if weapon == nil then
 		elseif weapon._name == nil then
 		elseif weapon._rpm == nil then
-		elseif player_timers[player:get_player_name()].fire > 60 / weapon._rpm  then
-			if solarsail.controls.player[player:get_player_name()].LMB then
-				player_timers[player:get_player_name()].fire = 0
-				if weapon._type == "gun" or weapon._type == "rocket" then
-					if weapons.player_list[player:get_player_name()].primary > 0 then
-						if not is_reloading[player:get_player_name()] then
+		elseif player_timers[pname].fire > 60 / weapon._rpm  then
+			if solarsail.controls.player[pname].LMB then
+				player_timers[pname].fire = 0
+				if weapon._mag ~= nil then
+					local ammo = weapon._ammo_type
+					if weapons.player_list[pname][ammo] > 0 then
+						if not weapons.is_reloading[pname][wield] then
 							shoot(player, weapon)
 							minetest.sound_play({name=weapon._firing_sound}, 
 								{pos=player:get_pos(), max_hear_distance=128, gain=1.75})
-							weapons.player_list[player:get_player_name()].primary = 
-								weapons.player_list[player:get_player_name()].primary - 1
-							if weapons.player_list[player:get_player_name()].primary == 0 then
-								is_reloading[player:get_player_name()] = true
+							weapons.player_list[player:get_player_name()][ammo] = 
+								weapons.player_list[player:get_player_name()][ammo] - 1
+							if weapons.player_list[player:get_player_name()][ammo] == 0 then
+								weapons.is_reloading[pname][wield] = true
 								local p_inv = player:get_inventory()
+								local p_ind = player:get_wield_index()
 								player:hud_change(player_huds[player:get_player_name()].reloading, 
 									"text", "reloading.png")
 								minetest.sound_play({name=weapon._reload_sound},
 									{object=player, max_hear_distance=8, gain=0.15})
-								p_inv:set_stack("main", 1, ItemStack(weapon._reload_node.." 1"))
 								minetest.after(weapon._reload, finish_reload, player, weapon,
-									minetest.registered_nodes[weapon._reload_node])
+									minetest.registered_nodes[weapon._reload_node], p_ind, wield)
+								p_inv:set_stack("main", p_ind, ItemStack(weapon._reload_node.." 1"))
 							end
 						end
 					end
@@ -789,67 +798,59 @@ local function render_hud()
 		if weapons.player_list[pname].class ~= nil then
 			local wield = player:get_wielded_item():get_name()
 			local weapon = minetest.registered_nodes[wield]
-			if weapon == nil then
-				weapon = minetest.registered_items[wield]
-				if weapon == nil then
-					weapon = minetest.registered_tools[wield]
-					if weapon == nil then
-						weapon = minetest.registered_craftitems[wield]
-					end
-				end
-			end
 			
 			if weapon == nil then
 			elseif weapon._type == nil then
-			elseif weapon._type == "gun" or weapon._type == "rocket" then
-				if weapons.player_list[player:get_player_name()].primary > 9 then
-					local a1 = tostring(weapons.player_list[player:get_player_name()].primary):sub(1,1)
-					local a2 = tostring(weapons.player_list[player:get_player_name()].primary):sub(2,2)
-
+			elseif weapon._ammo_type ~= nil then
+				local ammo = weapon._ammo_type
+				if weapons.player_list[pname][ammo] > 9 then
+					local a1 = tostring(weapons.player_list[pname][ammo]):sub(1,1)
+					local a2 = tostring(weapons.player_list[pname][ammo]):sub(2,2)
+					-- Prevent resending of HUD packets causing client desyncronisation
 					if a1 ~= weapons.player_list[pname].a1 then
-						player:hud_change(player_huds[player:get_player_name()].ammo_1, "text",
+						player:hud_change(player_huds[pname].ammo_1, "text",
 							a1..".png")
 						weapons.player_list[pname].a1 = a1
 					end
-
 					if a2 ~= weapons.player_list[pname].a2 then
-						player:hud_change(player_huds[player:get_player_name()].ammo_2, "text",
+						player:hud_change(player_huds[pname].ammo_2, "text",
 							a2..".png")
 						weapons.player_list[pname].a2 = a2
 					end
 				else
 					local a1 = "0"
-					local a2 = tostring(weapons.player_list[player:get_player_name()].primary):sub(1,1)
+					local a2 = tostring(weapons.player_list[pname][ammo]):sub(1,1)
 					
+					-- Prevent resending of HUD packets
 					if a1 ~= weapons.player_list[pname].a1 then
-						player:hud_change(player_huds[player:get_player_name()].ammo_1, "text", "0.png")
+						player:hud_change(player_huds[pname].ammo_1, "text", "0.png")
 						weapons.player_list[pname].a1 = "0"
 					end
-
 					if a2 ~= weapons.player_list[pname].a2 then
-						player:hud_change(player_huds[player:get_player_name()].ammo_2, "text",
+						player:hud_change(player_huds[pname].ammo_2, "text",
 							a2..".png")
 						weapons.player_list[pname].a2 = a2
 					end
 				end
-				if weapons.player_list[player:get_player_name()].primary_max > 9 then
-					local m1 = tostring(weapons.player_list[player:get_player_name()].primary_max):sub(1,1)
-					local m2 = tostring(weapons.player_list[player:get_player_name()].primary_max):sub(2,2)
 
+				if weapons.player_list[pname][ammo.."_max"] > 9 then
+					local m1 = tostring(weapons.player_list[pname][ammo.."_max"]):sub(1,1)
+					local m2 = tostring(weapons.player_list[pname][ammo.."_max"]):sub(2,2)
+
+					-- Prevent resending of HUD packets
 					if m1 ~= weapons.player_list[pname].m1 then
-						player:hud_change(player_huds[player:get_player_name()].ammo_m1, "text",
+						player:hud_change(player_huds[pname].ammo_m1, "text",
 							m1..".png")
 						weapons.player_list[pname].m1 = m1
 					end
-
 					if m2 ~= weapons.player_list[pname].m2 then
-						player:hud_change(player_huds[player:get_player_name()].ammo_m2, "text",
+						player:hud_change(player_huds[pname].ammo_m2, "text",
 							m2..".png")
 						weapons.player_list[pname].m2 = m2
 					end
 				else
 					local m1 = "0"
-					local m2 = tostring(weapons.player_list[player:get_player_name()].primary_max):sub(1,1)
+					local m2 = tostring(weapons.player_list[pname][ammo.."_max"]):sub(1,1)
 					
 					if m1 ~= weapons.player_list[pname].m1 then
 						player:hud_change(player_huds[player:get_player_name()].ammo_m1, "text", "0.png")
@@ -863,138 +864,6 @@ local function render_hud()
 					end
 				end
 
-				if not weapons.player_list[pname].slash then
-					player:hud_change(player_huds[player:get_player_name()].ammo_s, "text", "slash.png")
-					weapons.player_list[pname].slash = true
-				end
-			elseif weapon._type == "block" then
-				if weapons.player_list[player:get_player_name()].blocks > 9 then
-					local a1 = tostring(weapons.player_list[player:get_player_name()].blocks):sub(1,1)
-					local a2 = tostring(weapons.player_list[player:get_player_name()].blocks):sub(2,2)
-
-					if a1 ~= weapons.player_list[pname].a1 then
-						player:hud_change(player_huds[player:get_player_name()].ammo_1, "text",
-							a1..".png")
-						weapons.player_list[pname].a1 = a1
-					end
-
-					if a2 ~= weapons.player_list[pname].a2 then
-						player:hud_change(player_huds[player:get_player_name()].ammo_2, "text",
-							a2..".png")
-						weapons.player_list[pname].a2 = a2
-					end
-				else
-					local m1 = "0"
-					local m2 = tostring(weapons.player_list[player:get_player_name()].blocks):sub(1,1)
-
-					if m1 ~= weapons.player_list[pname].m1 then
-						player:hud_change(player_huds[player:get_player_name()].ammo_1, "text", "0.png")
-						weapons.player_list[pname].m1 = m1
-					end
-
-					if m2 ~= weapons.player_list[pname].m2 then
-						player:hud_change(player_huds[player:get_player_name()].ammo_2, "text",
-							m2..".png")
-						weapons.player_list[pname].m2 = m2
-					end
-				end
-
-				if weapons.player_list[player:get_player_name()].blocks_max > 9 then
-					local m1 = tostring(weapons.player_list[player:get_player_name()].blocks_max):sub(1,1)
-					local m2 = tostring(weapons.player_list[player:get_player_name()].blocks_max):sub(2,2)
-
-					if m1 ~= weapons.player_list[pname].m1 then
-						player:hud_change(player_huds[player:get_player_name()].ammo_m1, "text",
-							m1..".png")
-						weapons.player_list[pname].m1 = m1
-					end
-
-					if m2 ~= weapons.player_list[pname].m2 then
-						player:hud_change(player_huds[player:get_player_name()].ammo_m2, "text",
-							m2..".png")
-						weapons.player_list[pname].m2 = m2
-					end
-				else
-					local m1 = "0"
-					local m2 = tostring(weapons.player_list[player:get_player_name()].blocks_max):sub(1,1)
-
-					if m1 ~= weapons.player_list[pname].m1 then
-						player:hud_change(player_huds[player:get_player_name()].ammo_m1, "text", "0.png")
-						weapons.player_list[pname].m1 = "0"
-					end
-
-					if m2 ~= weapons.player_list[pname].m2 then
-						player:hud_change(player_huds[player:get_player_name()].ammo_m2, "text",
-							m2..".png")
-						weapons.player_list[pname].m2 = m2
-					end
-				end
-				if not weapons.player_list[pname].slash then
-					player:hud_change(player_huds[player:get_player_name()].ammo_s, "text", "slash.png")
-					weapons.player_list[pname].slash = true
-				end
-			elseif weapon._type == "tool" then
-				if weapons.player_list[player:get_player_name()].blocks > 9 then
-					local a1 = tostring(weapons.player_list[player:get_player_name()].blocks):sub(1,1)
-					local a2 = tostring(weapons.player_list[player:get_player_name()].blocks):sub(2,2)
-
-					if a1 ~= weapons.player_list[pname].a1 then
-						player:hud_change(player_huds[player:get_player_name()].ammo_1, "text",
-							a1..".png")
-						weapons.player_list[pname].a1 = a1
-					end
-
-					if a2 ~= weapons.player_list[pname].a2 then
-						player:hud_change(player_huds[player:get_player_name()].ammo_2, "text",
-							a2..".png")
-						weapons.player_list[pname].a2 = a2
-					end
-				else
-					local m1 = "0"
-					local m2 = tostring(weapons.player_list[player:get_player_name()].blocks):sub(1,1)
-
-					if m1 ~= weapons.player_list[pname].m1 then
-						player:hud_change(player_huds[player:get_player_name()].ammo_1, "text", "0.png")
-						weapons.player_list[pname].m1 = m1
-					end
-
-					if m2 ~= weapons.player_list[pname].m2 then
-						player:hud_change(player_huds[player:get_player_name()].ammo_2, "text",
-							m2..".png")
-						weapons.player_list[pname].m2 = m2
-					end
-				end
-
-				if weapons.player_list[player:get_player_name()].blocks_max > 9 then
-					local m1 = tostring(weapons.player_list[player:get_player_name()].blocks_max):sub(1,1)
-					local m2 = tostring(weapons.player_list[player:get_player_name()].blocks_max):sub(2,2)
-
-					if m1 ~= weapons.player_list[pname].m1 then
-						player:hud_change(player_huds[player:get_player_name()].ammo_m1, "text",
-							m1..".png")
-						weapons.player_list[pname].m1 = m1
-					end
-
-					if m2 ~= weapons.player_list[pname].m2 then
-						player:hud_change(player_huds[player:get_player_name()].ammo_m2, "text",
-							m2..".png")
-						weapons.player_list[pname].m2 = m2
-					end
-				else
-					local m1 = "0"
-					local m2 = tostring(weapons.player_list[player:get_player_name()].blocks_max):sub(1,1)
-
-					if m1 ~= weapons.player_list[pname].m1 then
-						player:hud_change(player_huds[player:get_player_name()].ammo_m1, "text", "0.png")
-						weapons.player_list[pname].m1 = "0"
-					end
-
-					if m2 ~= weapons.player_list[pname].m2 then
-						player:hud_change(player_huds[player:get_player_name()].ammo_m2, "text",
-							m2..".png")
-						weapons.player_list[pname].m2 = m2
-					end
-				end
 				if not weapons.player_list[pname].slash then
 					player:hud_change(player_huds[player:get_player_name()].ammo_s, "text", "slash.png")
 					weapons.player_list[pname].slash = true
@@ -1005,32 +874,37 @@ local function render_hud()
 				weapons.player_list[pname].m1 = "nil"
 				weapons.player_list[pname].m2 = "nil"
 				weapons.player_list[pname].slash = false
-				player:hud_change(player_huds[player:get_player_name()].ammo_1, "text", "transparent.png")
-				player:hud_change(player_huds[player:get_player_name()].ammo_m1, "text", "transparent.png")
-				player:hud_change(player_huds[player:get_player_name()].ammo_2, "text", "transparent.png")
-				player:hud_change(player_huds[player:get_player_name()].ammo_m2, "text", "transparent.png")
-				player:hud_change(player_huds[player:get_player_name()].ammo_s, "text", "transparent.png")
+				player:hud_change(player_huds[pname].ammo_1, "text", "transparent.png")
+				player:hud_change(player_huds[pname].ammo_m1, "text", "transparent.png")
+				player:hud_change(player_huds[pname].ammo_2, "text", "transparent.png")
+				player:hud_change(player_huds[pname].ammo_m2, "text", "transparent.png")
+				player:hud_change(player_huds[pname].ammo_s, "text", "transparent.png")
 			end
 			
 			if weapon == nil then
 				if weapons.player_list[pname].cross ~= "transparent" then
 					weapons.player_list[pname].cross = "transparent"
-					player:hud_change(player_huds[player:get_player_name()].crosshair, "text", "transparent.png")
+					player:hud_change(player_huds[pname].crosshair, "text", "transparent.png")
 				end
 			elseif weapon._crosshair == nil then
 				if weapons.player_list[pname].cross ~= "transparent" then
 					weapons.player_list[pname].cross = "transparent"
-					player:hud_change(player_huds[player:get_player_name()].crosshair, "text", "transparent.png")
+					player:hud_change(player_huds[pname].crosshair, "text", "transparent.png")
 				end
 			else
 				if weapons.player_list[pname].cross ~= weapon._crosshair then
-					player:hud_change(player_huds[player:get_player_name()].crosshair,
+					player:hud_change(player_huds[pname].crosshair,
 						"text", weapon._crosshair)
 					weapons.player_list[pname].cross = weapon._crosshair
 				end
 			end
 
-			if weapon._ammo_bg == nil then
+			if weapon == nil then
+				if weapons.player_list[pname].ammo_bg ~= "transparent" then
+					player:hud_change(player_huds[pname].ammo_bg, "text", "transparent.png")
+					weapons.player_list[pname].ammo_bg = "transparent"
+				end
+			elseif weapon._ammo_bg == nil then
 				if weapons.player_list[pname].ammo_bg ~= "transparent" then
 					player:hud_change(player_huds[pname].ammo_bg, "text", "transparent.png")
 					weapons.player_list[pname].ammo_bg = "transparent"
@@ -1048,20 +922,27 @@ end
 
 local function alternate_mode()
 	for _, player in ipairs(minetest.get_connected_players()) do
-		if solarsail.controls.player[player:get_player_name()] == nil then
-		elseif solarsail.controls.player[player:get_player_name()].RMB then
-			if not solarsail.controls.player[player:get_player_name()].sneak then
-				local wield = player:get_wielded_item():get_name()
-				local weapon = minetest.registered_nodes[wield]
-				if weapon == nil then
-				elseif weapon._alt_mode == nil then
-				else
-					player:set_wielded_item(ItemStack(weapon._alt_mode .. " 1"))
-				end
+		local pname = player:get_player_name()
+		local wield = player:get_wielded_item():get_name()
+		local weapon = minetest.registered_nodes[wield]
+
+		if solarsail.controls.player[pname] == nil then
+		elseif weapon == nil then
+		elseif weapon._type == nil then
+		elseif weapon._alt_mode == nil then
+		elseif solarsail.controls.player[pname].RMB then
+			if weapon._is_alt then
+			else
+				player:set_wielded_item(ItemStack(weapon._alt_mode .. " 1"))
+			end
+		else
+			if weapon._is_alt then
+				player:set_wielded_item(ItemStack(weapon._alt_mode .. " 1"))
+			else
 			end
 		end
 	end
-	minetest.after(0.15, alternate_mode)
+	minetest.after(0.03, alternate_mode)
 end
 minetest.after(2, alternate_mode)
 minetest.after(2, render_hud)
@@ -1109,7 +990,7 @@ local function handle_alt_physics()
 			local new_phys = 
 				table.copy(weapons[weapons.player_list[pname].class].physics)
 			new_phys.speed = new_phys.speed * weapon._phys_alt
-			new_phys.jump = new_phys.jump * weapon._phys_alt
+			--new_phys.jump = new_phys.jump * weapon._phys_alt
 			player:set_physics_override(new_phys)
 			player_phys[pname] = weapon._phys_alt
 		end

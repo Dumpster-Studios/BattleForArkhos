@@ -5,14 +5,16 @@
 local assault = {}
 assault.stats = {
 	hp = 200,
-	shield = 150,
-	hotbar = 6,
+	blocks = 50,
 }
 assault.items = {
 	"weapons:assault_rifle",
-	--"weapons:demo_charge",
+	"weapons:rocket_launcher",
 	"weapons:pickaxe",
-	"core:team_neutral"
+	"weapons:pickaxe_alt",
+	"core:team_neutral",
+	"core:slab_neutral",
+	"core:lamp_neutral"
 }
 assault.physics = {
 	speed = 1.15,
@@ -26,14 +28,16 @@ assault.physics = {
 local marksman = {}
 marksman.stats = {
 	hp = 125,
-	shield = 50,
-	hotbar = 5,
+	blocks = 75,
 }
 marksman.items = {
 	"weapons:railgun",
 	--"weapons:pistol",
 	"weapons:pickaxe",
-	"core:team_neutral"
+	"weapons:pickaxe_alt",
+	"core:team_neutral",
+	"core:slab_neutral",
+	"core:lamp_neutral"
 }
 marksman.physics = {
 	speed = 0.95,
@@ -47,14 +51,17 @@ marksman.physics = {
 local medic = {}
 medic.stats = {
 	hp = 125,
-	sheild = 200
+	blocks = 35,
 }
 medic.items = {
 	"weapons:smg",
 	"weapons:pickaxe",
+	"weapons:pickaxe_alt",
 	--"weapons:injector",
 	--"weapons:resurrector",
-	"core:team_neutral"
+	"core:team_neutral",
+	"core:slab_neutral",
+	"core:lamp_neutral"
 }
 medic.physics = {
 	speed = 1.4,
@@ -67,13 +74,16 @@ medic.physics = {
 local scout = {}
 scout.stats = {
 	hp = 75,
-	sheild = 75
+	blocks = 25,
 }
 scout.items = {
 	"weapons:shotgun",
 	--"weapons:shaped_charge",
 	"weapons:pickaxe",
-	"core:team_neutral"
+	"weapons:pickaxe_alt",
+	"core:team_neutral",
+	"core:slab_neutral",
+	"core:lamp_neutral"
 }
 scout.physics = {
 	speed = 1.55,
@@ -84,17 +94,31 @@ scout.physics = {
 	new_move = false
 }
 
+local red_flag = {
+	items = {
+		"weapons:flag_red"
+	}
+}
+
+local blue_flag = {
+	items = {
+		"weapons:flag_blue"
+	}
+}
+
 weapons.assault = assault
 weapons.marksman = marksman
 weapons.medic = medic
 weapons.scout = scout
+weapons.red_flag = red_flag
+weapons.blue_flag = blue_flag
 
 weapons.class_formspec =
 	"size[8,8]"..
 	"button[0,7;2,1;assault;Assault]"..
-	"button[2,7;2,1;marksman;Marksman]"..
-	"button[4,7;2,1;medic;Medic]"..
-	"button[6,7;2,1;scout;Scout]"..
+	--"button[2,7;2,1;marksman;Marksman]"..
+	--"button[4,7;2,1;medic;Medic]"..
+	--"button[6,7;2,1;scout;Scout]"..
 	"button[0,0;4,1;lefty;Left Shoulder View]"..
 	"button[4,0;4,1;righty;Right Shoulder View]"
 
@@ -108,101 +132,25 @@ weapons.clear_inv = clear_inv
 
 local function add_class_items(player, class)
 	local p_inv = player:get_inventory()
-	if class == "assault" then
-		for k, stack in pairs(assault.items) do
-			local istack = ItemStack(stack .. " 1")
-			local node = minetest.registered_nodes[stack .. "_" ..
-				weapons.player_list[player:get_player_name()].team]
-			if node == nil then
-			elseif node._type == nil then
-			elseif node._type == "gun" then
-				istack = ItemStack(stack .. "_" .. 
-					weapons.player_list[player:get_player_name()].team ..
-					" 1")
-			elseif node._type == "tool" then
-				istack = ItemStack(stack .. "_" .. 
-					weapons.player_list[player:get_player_name()].team ..
-					" 1")
-			end
-			p_inv:add_item("main", istack)
+	local pname = player:get_player_name()
+	for k, stack in pairs(weapons[class].items) do
+		local istack = ItemStack(stack .. " 1")
+		local node = minetest.registered_nodes[stack .. "_" ..
+			weapons.player_list[pname].team]
+		if node == nil then
+		elseif node._type == nil then
+		else
+			istack = ItemStack(stack .. "_" .. 
+				weapons.player_list[pname].team ..
+				" 1")
 		end
-		player:hud_set_hotbar_itemcount(#assault.items)
-		return
-	elseif class == "marksman" then
-		for k, stack in pairs(marksman.items) do
-			local istack = ItemStack(stack .. " 1")
-			local node = minetest.registered_nodes[stack .. "_" ..
-				weapons.player_list[player:get_player_name()].team]
-			if node == nil then
-			elseif node._type == nil then
-			elseif node._type == "gun" then
-				istack = ItemStack(stack .. "_" .. 
-					weapons.player_list[player:get_player_name()].team ..
-					" 1")
-			elseif node._type == "tool" then
-				istack = ItemStack(stack .. "_" .. 
-					weapons.player_list[player:get_player_name()].team ..
-					" 1")
-			end
-			p_inv:add_item("main", istack)
-		end
-		player:hud_set_hotbar_itemcount(#marksman.items)
-		return
-	elseif class == "medic" then
-		for k, stack in pairs(medic.items) do
-			local istack = ItemStack(stack .. " 1")
-			local node = minetest.registered_nodes[stack .. "_" ..
-				weapons.player_list[player:get_player_name()].team]
-			if node == nil then
-			elseif node._type == nil then
-			elseif node._type == "gun" then
-				istack = ItemStack(stack .. "_" .. 
-					weapons.player_list[player:get_player_name()].team ..
-					" 1")
-			elseif node._type == "tool" then
-				istack = ItemStack(stack .. "_" .. 
-					weapons.player_list[player:get_player_name()].team ..
-					" 1")
-			end
-			p_inv:add_item("main", istack)
-		end
-		player:hud_set_hotbar_itemcount(#medic.items)
-		return
-	elseif class == "scout" then
-		for k, stack in pairs(scout.items) do
-			local istack = ItemStack(stack .. " 1")
-			local node = minetest.registered_nodes[stack .. "_" ..
-				weapons.player_list[player:get_player_name()].team]
-			if node == nil then
-			elseif node._type == nil then
-			elseif node._type == "gun" then
-				istack = ItemStack(stack .. "_" .. 
-					weapons.player_list[player:get_player_name()].team ..
-					" 1")
-			elseif node._type == "tool" then
-				istack = ItemStack(stack .. "_" .. 
-					weapons.player_list[player:get_player_name()].team ..
-					" 1")
-			end
-			p_inv:add_item("main", istack)
-		end
-		player:hud_set_hotbar_itemcount(#scout.items)
-		return
-	elseif class == "blue_flag" then
-		local istack = ItemStack("weapons:flag_blue 1")
-		local num_items = #weapons[weapons.player_list[player:get_player_name()].class].items
-		for i=1, num_items do
-			p_inv:add_item("main", istack)
-		end
-		player:hud_set_hotbar_itemcount(1)
-	elseif class == "red_flag" then
-		local istack = ItemStack("weapons:flag_red 1")
-		local num_items = #weapons[weapons.player_list[player:get_player_name()].class].items
-		for i=1, num_items do
-			p_inv:add_item("main", istack)
-		end
-		player:hud_set_hotbar_itemcount(1)
+		p_inv:add_item("main", istack)
+		-- Hacky bullshit part 69
+		-- This doesn't cancel reloading at all, it just for some reason doesn't
+		-- properly *apply* it.
+		weapons.is_reloading[pname][stack .."_"..weapons.player_list[pname].team] = false
 	end
+	player:hud_set_hotbar_itemcount(#weapons[class].items)
 end
 
 weapons.add_class_items = add_class_items
@@ -220,61 +168,36 @@ local function set_player_physics(player, class)
 end
 
 local function set_ammo(player, class)
-	if class == "assault" then
-		weapons.player_list[player:get_player_name()].primary = 
-			minetest.registered_nodes["weapons:assault_rifle_red"]._mag
-		weapons.player_list[player:get_player_name()].primary_max = 
-			minetest.registered_nodes["weapons:assault_rifle_red"]._mag
-		weapons.player_list[player:get_player_name()].blocks = 50
-		weapons.player_list[player:get_player_name()].blocks_max = 50
-	elseif class == "marksman" then
-		weapons.player_list[player:get_player_name()].primary = 
-			minetest.registered_nodes["weapons:railgun_red"]._mag
-		weapons.player_list[player:get_player_name()].primary_max = 
-			minetest.registered_nodes["weapons:railgun_red"]._mag
-		weapons.player_list[player:get_player_name()].blocks = 99
-		weapons.player_list[player:get_player_name()].blocks_max = 99
-	elseif class == "medic" then
-		weapons.player_list[player:get_player_name()].primary = 
-			minetest.registered_nodes["weapons:smg_red"]._mag
-		weapons.player_list[player:get_player_name()].primary_max = 
-			minetest.registered_nodes["weapons:smg_red"]._mag
-		weapons.player_list[player:get_player_name()].blocks = 25
-		weapons.player_list[player:get_player_name()].blocks_max = 25
-	elseif class == "scout" then
-		weapons.player_list[player:get_player_name()].primary = 
-			minetest.registered_nodes["weapons:shotgun_red"]._mag
-		weapons.player_list[player:get_player_name()].primary_max = 
-			minetest.registered_nodes["weapons:shotgun_red"]._mag
-		weapons.player_list[player:get_player_name()].blocks = 15
-		weapons.player_list[player:get_player_name()].blocks_max = 15
+	local pname = player:get_player_name()
+	for _, stack in pairs(weapons[class].items) do
+		-- Big hax btw, teams can have differing magazine sizes
+		local weapon = minetest.registered_nodes[stack .. "_" ..
+			weapons.player_list[pname].team]
+
+		-- Avoid invalid weapons being checked against
+		if weapon == nil then
+		-- Also avoid invalid ammo types
+		elseif weapon._ammo_type == nil then
+		else
+			-- Allow certain magazine sizes to be class defined:
+			if weapon._mag == nil then
+			else
+				weapons.player_list[pname][weapon._ammo_type] =
+					weapon._mag
+				weapons.player_list[pname][weapon._ammo_type .. "_max"] =
+					weapon._mag
+			end
+		end
 	end
+	weapons.player_list[pname].blocks = weapons[class].stats.blocks
+	weapons.player_list[pname].blocks_max = weapons[class].stats.blocks
 end
 
 weapons.set_ammo = set_ammo
 
 local function set_health(player, class)
-	if class == "assault" then
-		weapons.player_list[player:get_player_name()].hp = assault.stats.hp
-		weapons.player_list[player:get_player_name()].hp_max = assault.stats.hp
-		weapons.player_list[player:get_player_name()].shield = assault.stats.shield
-		weapons.player_list[player:get_player_name()].shield_max = assault.stats.shield
-	elseif class == "marksman" then
-		weapons.player_list[player:get_player_name()].hp = marksman.stats.hp
-		weapons.player_list[player:get_player_name()].hp_max = marksman.stats.hp
-		weapons.player_list[player:get_player_name()].shield = marksman.stats.shield
-		weapons.player_list[player:get_player_name()].shield_max = marksman.stats.shield
-	elseif class == "medic" then
-		weapons.player_list[player:get_player_name()].hp = medic.stats.hp
-		weapons.player_list[player:get_player_name()].hp_max = medic.stats.hp
-		weapons.player_list[player:get_player_name()].shield = medic.stats.shield
-		weapons.player_list[player:get_player_name()].shield_max = medic.stats.shield
-	elseif class == "scout" then
-		weapons.player_list[player:get_player_name()].hp = scout.stats.hp
-		weapons.player_list[player:get_player_name()].hp_max = scout.stats.hp
-		weapons.player_list[player:get_player_name()].shield = scout.stats.shield
-		weapons.player_list[player:get_player_name()].shield_max = scout.stats.shield
-	end
+	weapons.player_list[player:get_player_name()].hp = weapons[class].stats.hp
+	weapons.player_list[player:get_player_name()].hp_max = weapons[class].stats.hp
 end
 
 weapons.set_health = set_health
