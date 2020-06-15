@@ -97,7 +97,7 @@ function weapons.spray_particles(pointed, nodedef, target_pos)
 	if pointed == nil then
 		npos = table.copy(target_pos)
 	else
-		npos = table.copy(pointed.above)
+		npos = table.copy(pointed.intersection_point)
 	end
 	if nodedef.tiles == nil then return end
 	for i=8, math.random(12, 16) do
@@ -107,7 +107,8 @@ function weapons.spray_particles(pointed, nodedef, target_pos)
 			collisiondetection = true,
 			velocity = {x=math.random(-1, 1), y=0, z=math.random(-1, 1)},
 			acceleration = {x=0, y=-5, z=0},
-			texture = nodedef.tiles[1]
+			node_tile = 0,
+			node = {name=minetest.get_node(npos).name}
 		})
 	end
 end
@@ -328,18 +329,20 @@ local function wait(pointed, player, weapon, target_pos, dist)
 			local damage, node = weapons.calc_block_damage(nodedef, weapon, target_pos, pointed)
 			minetest.set_node(target_pos, {name=node})
 			if damage < 1 then
+				weapons.spray_particles(pointed, nodedef, nil)
 				if weapon._type == "tool" then
 					if weapons.player_list[player:get_player_name()].blocks <
 					weapons.player_list[player:get_player_name()].blocks_max then
 						weapons.player_list[player:get_player_name()].blocks =
 						weapons.player_list[player:get_player_name()].blocks + 1
 					end
+					
 				end
 				if weapon._type == "tool_alt" then
 					minetest.set_node({x=target_pos.x, y=target_pos.y-1, z=target_pos.z},
 					{name="air"})
 					weapons.spray_particles(nil, nodedef,
-					{x=target_pos.x, y=target_pos.y-1, z=target_pos.z})
+						{x=target_pos.x, y=target_pos.y-1, z=target_pos.z})
 				end
 			end
 			minetest.check_for_falling(target_pos)
@@ -418,6 +421,23 @@ local function shoot(player, weapon)
 		})
 		ent:set_velocity(rocket_vel)
 		ent:set_rotation(vector.new(-look_vertical, look_horizontal, 0))
+		return
+	elseif weapon._type == "grenade" then
+		local gren_pos = vector.add(
+			vector.add(player:get_pos(), vector.new(0, 1.64, 0)), 
+				vector.multiply(player:get_look_dir(), 1)
+		)
+
+		local gren_vel = vector.add(
+				vector.multiply(player:get_look_dir(), 20), vector.new(0, 0, 0)
+			)
+		local ent = minetest.add_entity(gren_pos, weapon._grenade_ent)
+		local luaent = ent:get_luaentity()
+		ent:set_velocity(gren_vel)
+		local look_vertical = player:get_look_vertical()
+		local look_horizontal = player:get_look_horizontal()
+		ent:set_rotation(vector.new(-look_vertical, look_horizontal, 0))
+		ent:set_acceleration({x=0, y=-9.80, z=0})
 		return
 	end
 	
@@ -527,10 +547,10 @@ end
 local health_pos = {x=0.325, y=0.825}
 local ammo_pos = {x=0.675, y=0.825}
 local player_phys = {}
-local player_keys = {}
+local player_key_timer = {}
 
 local function set_keys(pname)
-	player_keys[pname] = solarsail.controls.player[pname]
+	player_key_timer[pname] = 0
 end
 
 minetest.register_on_joinplayer(function(player)
@@ -552,7 +572,7 @@ minetest.register_on_joinplayer(function(player)
 	})
 
 	player_huds[pname] = {}
-	minetest.after(2, set_keys, pname)
+	player_key_timer[pname] = 0
 
 	player_huds[pname].visual_1 = player:hud_add({
 		hud_elem_type = "image",
@@ -673,14 +693,27 @@ end)
 
 function weapons.player.cancel_reload(player)
 	local pname = player:get_player_name()
+	local weapon 
+	local is_canceled = false
 	for wname, bool in pairs(weapons.is_reloading[pname]) do
 		if bool then
-			print(wname)
 			weapons.is_reloading[pname][wname] = false
+			is_canceled = true
+			-- Probably very CPU heavy; but needed
+		end
+		weapon = minetest.registered_nodes[wname]
+	end
+	if weapon == nil then
+	elseif weapon._no_reload_hud then
+	else
+		-- Only if there's an actual reload happening
+		-- we remember that clients are spuds
+		-- who can't handle 100ms packet decode times
+		if is_canceled then
+			player:hud_change(player_huds[pname].reloading,
+				"text", "transparent.png")
 		end
 	end
-	player:hud_change(player_huds[pname].reloading,
-		"text", "transparent.png")
 end
 
 local function finish_reload(player, weapon, new_wep, slot, wieldname)
@@ -690,13 +723,20 @@ local function finish_reload(player, weapon, new_wep, slot, wieldname)
 		if weapons.player_list[pname] == nil then
 			return
 		end
+
 		local ammo = new_wep._ammo_type
 		weapons.player_list[pname][ammo] =
 			weapons.player_list[pname][ammo.."_max"]
+		
 		local p_inv = player:get_inventory()
 		p_inv:set_stack("main", slot, ItemStack(new_wep._reset_node.." 1"))
-		player:hud_change(player_huds[pname].reloading,
-			"text", "transparent.png")
+
+		-- Avoid sending HUD updates unless needed
+		if weapon._no_reload_hud then
+		else
+			player:hud_change(player_huds[pname].reloading,
+				"text", "transparent.png")
+		end
 	end
 end
 
@@ -723,8 +763,11 @@ local function reload_controls()
 								rel_node, p_ind, wield)
 							minetest.sound_play({name=weapon._reload_sound},
 								{object=player, max_hear_distance=8, gain=0.15})
-							player:hud_change(player_huds[player:get_player_name()].reloading, 
-								"text", "reloading.png")
+							if weapon._no_reload_hud then
+							else
+								player:hud_change(player_huds[player:get_player_name()].reloading, 
+									"text", "reloading.png")
+							end
 							p_inv:set_stack("main", p_ind, ItemStack(weapon._reload_node.." 1"))
 						end
 					end
@@ -764,8 +807,11 @@ local function weapon_controls()
 								weapons.is_reloading[pname][wield] = true
 								local p_inv = player:get_inventory()
 								local p_ind = player:get_wield_index()
-								player:hud_change(player_huds[player:get_player_name()].reloading, 
-									"text", "reloading.png")
+								if weapon._no_reload_hud then
+								else
+									player:hud_change(player_huds[player:get_player_name()].reloading, 
+										"text", "reloading.png")
+								end
 								minetest.sound_play({name=weapon._reload_sound},
 									{object=player, max_hear_distance=8, gain=0.15})
 								minetest.after(weapon._reload, finish_reload, player, weapon,
@@ -926,19 +972,33 @@ local function alternate_mode()
 		local wield = player:get_wielded_item():get_name()
 		local weapon = minetest.registered_nodes[wield]
 
+		player_key_timer[pname] =
+			player_key_timer[pname] + 0.03
+
 		if solarsail.controls.player[pname] == nil then
 		elseif weapon == nil then
 		elseif weapon._type == nil then
 		elseif weapon._alt_mode == nil then
-		elseif solarsail.controls.player[pname].RMB then
-			if weapon._is_alt then
-			else
-				player:set_wielded_item(ItemStack(weapon._alt_mode .. " 1"))
+		-- Handle tools with the reload key as they lack reloads
+		elseif solarsail.controls.player[pname].aux1 then
+			if player_key_timer[pname] > 0.25 then
+				if weapon._type ~= "gun" then
+					player_key_timer[pname] = 0
+					player:set_wielded_item(ItemStack(weapon._alt_mode .. " 1"))
+				end
 			end
-		else
-			if weapon._is_alt then
-				player:set_wielded_item(ItemStack(weapon._alt_mode .. " 1"))
-			else
+		-- Handle aiming down sights:
+		elseif weapon._type == "gun" then
+			if solarsail.controls.player[pname].RMB then
+				if weapon._is_alt then
+				else
+					player:set_wielded_item(ItemStack(weapon._alt_mode .. " 1"))
+				end
+				elseif not solarsail.controls.player[pname].RMB then
+				if weapon._is_alt then
+					player:set_wielded_item(ItemStack(weapon._alt_mode .. " 1"))
+				else
+				end
 			end
 		end
 	end
@@ -1004,8 +1064,6 @@ function core.spawn_item(pos, item)
 end
 
 -- We now have access to other functions defined here:
-
-dofile(minetest.get_modpath("weapons").."/worldedit.lua")
 dofile(minetest.get_modpath("weapons").."/skybox.lua")
 dofile(minetest.get_modpath("weapons").."/blocks.lua")
 dofile(minetest.get_modpath("weapons").."/weapons.lua")
@@ -1014,6 +1072,7 @@ dofile(minetest.get_modpath("weapons").."/game.lua")
 dofile(minetest.get_modpath("weapons").."/mapgen.lua")
 dofile(minetest.get_modpath("weapons").."/rocketry.lua")
 dofile(minetest.get_modpath("weapons").."/tracers.lua")
+dofile(minetest.get_modpath("weapons").."/grenades.lua")
 
 minetest.register_on_player_receive_fields(
 			function(player, formname, fields)

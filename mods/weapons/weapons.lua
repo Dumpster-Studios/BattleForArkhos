@@ -472,7 +472,7 @@ minetest.register_node(":core:team_neutral", {
 
 	_ammo_bg = "block_bg",
 	_ammo_type = "blocks",
-	--_alt_mode = "core:slab_neutral",
+	_alt_mode = "core:slab_neutral",
 	_fov_mult = 0,
 	_crosshair = "railgun_crosshair.png",
 	_type = "block",
@@ -512,7 +512,7 @@ minetest.register_node(":core:lamp_neutral", {
 
 	_ammo_bg = "block_bg",
 	_ammo_type = "blocks",
-	--_alt_mode = "core:team_neutral",
+	_alt_mode = "core:team_neutral",
 	_fov_mult = 0,
 	_crosshair = "railgun_crosshair.png",
 	_node = "lamp",
@@ -560,7 +560,7 @@ minetest.register_node(":core:slab_neutral", {
 
 	_ammo_bg = "block_bg",
 	_ammo_type = "blocks",
-	--_alt_mode = "core:lamp_neutral",
+	_alt_mode = "core:lamp_neutral",
 	_fov_mult = 0,
 	_crosshair = "railgun_crosshair.png",
 	_node = "slab",
@@ -605,7 +605,7 @@ minetest.register_node("weapons:pickaxe", {
 	_ammo_bg = "block_bg",
 	_ammo_type = "blocks",
 	_kf_name = "Pickaxe",
-	--_alt_mode = "weapons:pickaxe_alt",
+	_alt_mode = "weapons:pickaxe_alt",
 	_fov_mult = 0,
 	_type = "tool",
 	_crosshair = "railgun_crosshair.png",
@@ -645,7 +645,7 @@ minetest.register_node("weapons:pickaxe_alt", {
 	node_placement_prediction = "",
 
 	_kf_name = "Entrenching Tool",
-	--_alt_mode = "weapons:pickaxe",
+	_alt_mode = "weapons:pickaxe",
 	_fov_mult = 0,
 	_type = "tool_alt",
 	_crosshair = "railgun_crosshair.png",

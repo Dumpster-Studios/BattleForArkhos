@@ -15,25 +15,26 @@ local function generate_base_at(pos, area, area_max)
 			end
 		end
 	end
+	print(dump(pos))
 	minetest.place_schematic(pos, path..base, "0", nil, true)
 end
 
-local function test()
+local red = 207-42
+local blu = 192-42
 
-	local red = 207-42
-	local blu = 192-42
-
+local function set_base_y()
 	weapons.red_base_y = minetest.get_spawn_level(red, red)
-
 	weapons.blu_base_y = minetest.get_spawn_level(-blu, -blu)
 
 	if weapons.red_base_y == nil then
-		weapons.red_base_y=0
+		weapons.red_base_y = 0
 	end
 	if weapons.blu_base_y == nil then
-		weapons.blu_base_y=0
+		weapons.blu_base_y = 0
 	end
+end
 
+local function generate_base_schem()
 	--42 blocks from map edge 
 	generate_base_at(
 		{x=red, y=weapons.red_base_y-2, z=red}, 
@@ -49,10 +50,11 @@ local function test()
 
 end
 
-minetest.after(0.1, test)
+minetest.after(1, set_base_y)
+minetest.after(2, generate_base_schem)
 
 -- Fix broken things due to caves
-minetest.after(15, test)
+minetest.after(15, generate_base_schem)
 
 function plant_options(meshtype, horizontal, height, size)
 	local pshape, bit1, bit2, bit3 = 0, 0, 0, 0
@@ -105,7 +107,6 @@ minetest.register_on_generated(function(minp, maxp, seed)
 		end
 	end	
 	vm:set_data(data)
-	vm:calc_lighting()
 	vm:update_liquids()
 	vm:update_map()
 end)
@@ -241,7 +242,6 @@ function mcore.grow_pine(pos, boolsnow)
 	end
 
 	vm:set_data(data)
-	vm:calc_lighting()
 	vm:write_to_map()
 	vm:update_map()
 end
@@ -341,7 +341,6 @@ function mcore.grow_tree(pos, is_apple_tree, trunk_node, leaves_node, fallen_lea
 	add_trunk_and_leaves(data, a, pos, c_tree, c_leaves, height, 2, 8, is_apple_tree, log_grass)
 	
 	vm:set_data(data)
-	vm:calc_lighting()
 	vm:write_to_map()
 	vm:update_map()
 end

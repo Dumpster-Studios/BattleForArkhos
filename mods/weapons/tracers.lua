@@ -17,6 +17,7 @@ local function register_tracer(name)
 
 	function ent_table:on_step(dtime, moveresult)
 		if moveresult.collides then
+			print(dump(moveresult))
 			self.object:remove()
 		end
 	end

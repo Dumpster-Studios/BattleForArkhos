@@ -20,7 +20,7 @@ function weapons.calc_block_damage(nodedef, weapon, target_pos, pointed)
 			if pointed == nil then
 				weapons.spray_particles(nil, nodedef, target_pos)
 			else
-				weapons.spray_particles(nil, nodedef, pointed.intersection_point)
+				weapons.spray_particles(pointed, nodedef, nil)
 			end
 			return nodedamage, nodedef._name.."_"..nodedamage
 		end
@@ -143,14 +143,15 @@ end
 minetest.register_entity("weapons:rocket_ent", rocket_ent)
 
 local launcher_def_red = {
-	tiles = {"rocket_launcher.png", {name="assault_class_red.png", backface_culling=true}},
+	tiles = {"rocket_launcher.png", {name="assault_class_red.png", 
+										backface_culling=true}},
 	drawtype = "mesh",
 	mesh = "rocket_launcher_fp.b3d",
 	use_texture_alpha = true,
 	range = 1,
 	node_placement_prediction = "",
 
-
+	_no_reload_hud = true,
 	_reload_node = "weapons:rocket_launcher_reload_red",
 	_ammo_bg = "rocket_bg",
 	_kf_name = "Rocket Launcher",
@@ -178,7 +179,8 @@ local launcher_def_red = {
 minetest.register_node("weapons:rocket_launcher_red", launcher_def_red)
 
 local launcher_def_blue = table.copy(launcher_def_red)
-launcher_def_blue.tiles = {"rocket_launcher.png", {name="assault_class_blue.png", backface_culling=true}}
+launcher_def_blue.tiles = {"rocket_launcher.png", {name="assault_class_blue.png",
+													backface_culling=true}}
 launcher_def_blue._reload_node = "weapons:rocket_launcher_reload_blue"
 
 minetest.register_node("weapons:rocket_launcher_blue", launcher_def_blue)
@@ -189,8 +191,10 @@ local launcher_reload_red = {
 	use_texture_alpha = true,
 	range = 1,
 	node_placement_prediction = "",
-	tiles = {"rocket_launcher.png", "rocket_ent.png", {name="assault_class_red.png", backface_culling=true}},
+	tiles = {"rocket_launcher.png", "rocket_ent.png",
+				{name="assault_class_red.png", backface_culling=true}},
 
+	_no_reload_hud = true,
 	_reset_node = "weapons:rocket_launcher_red",
 	_ammo_bg = "rocket_bg",
 	_kf_name = "Rocket Launcher",
@@ -212,7 +216,8 @@ local launcher_reload_red = {
 minetest.register_node("weapons:rocket_launcher_reload_red", launcher_reload_red)
 
 local launcher_reload_blue = table.copy(launcher_reload_red)
-launcher_reload_blue.tiles = {"rocket_launcher.png", "rocket_ent.png", {name="assault_class_blue.png", backface_culling=true}}
+launcher_reload_blue.tiles = {"rocket_launcher.png", "rocket_ent.png",
+								{name="assault_class_blue.png", backface_culling=true}}
 launcher_reload_blue._reset_node = "weapons:rocket_launcher_blue"
 
 minetest.register_node("weapons:rocket_launcher_reload_blue", launcher_reload_blue)

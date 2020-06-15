@@ -11,10 +11,7 @@ assault.items = {
 	"weapons:assault_rifle",
 	"weapons:rocket_launcher",
 	"weapons:pickaxe",
-	"weapons:pickaxe_alt",
 	"core:team_neutral",
-	"core:slab_neutral",
-	"core:lamp_neutral"
 }
 assault.physics = {
 	speed = 1.15,
@@ -34,10 +31,7 @@ marksman.items = {
 	"weapons:railgun",
 	--"weapons:pistol",
 	"weapons:pickaxe",
-	"weapons:pickaxe_alt",
 	"core:team_neutral",
-	"core:slab_neutral",
-	"core:lamp_neutral"
 }
 marksman.physics = {
 	speed = 0.95,
@@ -56,12 +50,9 @@ medic.stats = {
 medic.items = {
 	"weapons:smg",
 	"weapons:pickaxe",
-	"weapons:pickaxe_alt",
 	--"weapons:injector",
 	--"weapons:resurrector",
 	"core:team_neutral",
-	"core:slab_neutral",
-	"core:lamp_neutral"
 }
 medic.physics = {
 	speed = 1.4,
@@ -78,12 +69,9 @@ scout.stats = {
 }
 scout.items = {
 	"weapons:shotgun",
-	--"weapons:shaped_charge",
+	"weapons:frag_grenade",
 	"weapons:pickaxe",
-	"weapons:pickaxe_alt",
 	"core:team_neutral",
-	"core:slab_neutral",
-	"core:lamp_neutral"
 }
 scout.physics = {
 	speed = 1.55,
@@ -116,9 +104,9 @@ weapons.blue_flag = blue_flag
 weapons.class_formspec =
 	"size[8,8]"..
 	"button[0,7;2,1;assault;Assault]"..
-	--"button[2,7;2,1;marksman;Marksman]"..
-	--"button[4,7;2,1;medic;Medic]"..
-	--"button[6,7;2,1;scout;Scout]"..
+	"button[2,7;2,1;marksman;Marksman]"..
+	"button[4,7;2,1;medic;Medic]"..
+	"button[6,7;2,1;scout;Scout]"..
 	"button[0,0;4,1;lefty;Left Shoulder View]"..
 	"button[4,0;4,1;righty;Right Shoulder View]"
 
@@ -390,12 +378,12 @@ minetest.register_chatcommand("class", {
 		else
 			pos2 = {x=-143, y=weapons.blu_base_y, z=-143}
 		end
-		local result = solarsail.util.functions.pos_to_dist(pos, pos2)
-		if result < 5.5 then
+		
+		--if result < 5.5 then
 			minetest.show_formspec(name, "class_select", weapons.class_formspec)
-		else
-			minetest.chat_send_player(name, "You can only change class at your team's base!")
-		end
+		--else
+			--minetest.chat_send_player(name, "You can only change class at your team's base!")
+		--end
 	end,
 })
 
@@ -403,18 +391,47 @@ minetest.register_on_player_receive_fields(function(player,
 		formname, fields)
 	local pname = player:get_player_name()
 	if formname == "class_select" then
+		local pos = player:get_pos()
+		local pos2
+		if weapons.player_list[pname].team == "red" then
+			pos2 = {x=207-35, y=weapons.red_base_y, z=207-35}
+		else
+			pos2 = {x=-143, y=weapons.blu_base_y, z=-143}
+		end
+		local result = solarsail.util.functions.pos_to_dist(pos, pos2)
+		local dist = 6
 		if fields.assault then
-			weapons.player.set_class(player, "assault")
-			weapons.player.cancel_reload(player)
+			if result < dist then
+				weapons.player.set_class(player, "assault")
+				weapons.player.cancel_reload(player)
+			else
+				minetest.chat_send_player(pname, 
+					"You can only change class at your team's base!")
+			end
 		elseif fields.marksman then
-			weapons.player.set_class(player, "marksman")
-			weapons.player.cancel_reload(player)
+			if result < dist then
+				weapons.player.set_class(player, "marksman")
+				weapons.player.cancel_reload(player)
+			else
+				minetest.chat_send_player(pname, 
+					"You can only change class at your team's base!")
+			end
 		elseif fields.medic then
-			weapons.player.set_class(player, "medic")
-			weapons.player.cancel_reload(player)
+			if result < dist then
+				weapons.player.set_class(player, "medic")
+				weapons.player.cancel_reload(player)
+			else
+				minetest.chat_send_player(pname, 
+					"You can only change class at your team's base!")
+			end
 		elseif fields.scout then
-			weapons.player.set_class(player, "scout")
-			weapons.player.cancel_reload(player)
+			if result < dist then
+				weapons.player.set_class(player, "scout")
+				weapons.player.cancel_reload(player)
+			else
+				minetest.chat_send_player(pname, 
+					"You can only change class at your team's base!")
+			end
 		elseif fields.quit then
 			minetest.after(0.1, minetest.show_formspec,
 				player:get_player_name(), "class_select",
@@ -483,9 +500,17 @@ minetest.register_globalstep(function(dtime)
 		end
 		if solarsail.controls.player[pname] == nil then
 		elseif solarsail.controls.player[pname].left then
-			anim_group = "left"
+			if solarsail.controls.player[pname].up then
+				anim_group = "left"
+			else
+				anim_group = "right"
+			end
 		elseif solarsail.controls.player[pname].right then
-			anim_group = "right"
+			if solarsail.controls.player[pname].up then
+				anim_group = "right"
+			else
+				anim_group = "left"
+			end
 		elseif solarsail.controls.player[pname].up then
 			anim_group = "up"
 		elseif solarsail.controls.player[pname].down then
