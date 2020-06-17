@@ -9,19 +9,18 @@ function weapons.calc_block_damage(nodedef, weapon, target_pos, pointed)
 	elseif nodedef.name == "ignore" then
 		return 0, "air"
 	elseif nodedef._health == nil then
-		weapons.spray_particles(nil, nodedef, target_pos)
+		weapons.spray_particles(pointed, nodedef, target_pos)
 		return 0, "air"
+	elseif not nodedef._takes_damage then
+		weapons.spray_particles(pointed, nodedef, target_pos)
+		return 0, nodedef.name
 	else
 		local nodedamage = nodedef._health - weapon._break_hits
 		if nodedamage < 1 then
-			weapons.spray_particles(nil, nodedef, target_pos)
+			weapons.spray_particles(pointed, nodedef, target_pos)
 			return 0, "air"
 		else
-			if pointed == nil then
-				weapons.spray_particles(nil, nodedef, target_pos)
-			else
-				weapons.spray_particles(pointed, nodedef, nil)
-			end
+			weapons.spray_particles(pointed, nodedef, target_pos)
 			return nodedamage, nodedef._name.."_"..nodedamage
 		end
 	end

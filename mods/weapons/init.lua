@@ -104,11 +104,14 @@ function weapons.spray_particles(pointed, nodedef, target_pos)
 		minetest.add_particle({
 			pos = npos,
 			expirationtime = 2,
-			collisiondetection = true,
+			collisiondetection = true,	
+			collision_removal = false,
+			object_collision = false,
 			velocity = {x=math.random(-1, 1), y=0, z=math.random(-1, 1)},
 			acceleration = {x=0, y=-5, z=0},
-			node_tile = 0,
-			node = {name=minetest.get_node(npos).name}
+			texture = nodedef.tiles[1]
+			--node_tile = 0,
+			--node = {name=minetest.get_node(npos).name}
 		})
 	end
 end
@@ -329,7 +332,6 @@ local function wait(pointed, player, weapon, target_pos, dist)
 			local damage, node = weapons.calc_block_damage(nodedef, weapon, target_pos, pointed)
 			minetest.set_node(target_pos, {name=node})
 			if damage < 1 then
-				weapons.spray_particles(pointed, nodedef, nil)
 				if weapon._type == "tool" then
 					if weapons.player_list[player:get_player_name()].blocks <
 					weapons.player_list[player:get_player_name()].blocks_max then
@@ -346,8 +348,9 @@ local function wait(pointed, player, weapon, target_pos, dist)
 				end
 			end
 			minetest.check_for_falling(target_pos)
+		else
+			weapons.spray_particles(pointed, nodedef)
 		end
-		
 	end
 end
 
@@ -389,7 +392,7 @@ local function shoot(player, weapon)
 				vertical = false,
 				minpos = vector.new(-0.15,-0.15,-0.15),
 				maxpos = vector.new(0.15,0.15,0.15),
-				minvel = vector.new(-1, 0.1, 1),
+				minvel = vector.new(-1, 0.1, -1),
 				maxvel = vector.new(1, 0.75, 1),
 				minacc = vector.new(0,0,0),
 				maxacc = vector.new(0,0,0),
@@ -423,21 +426,7 @@ local function shoot(player, weapon)
 		ent:set_rotation(vector.new(-look_vertical, look_horizontal, 0))
 		return
 	elseif weapon._type == "grenade" then
-		local gren_pos = vector.add(
-			vector.add(player:get_pos(), vector.new(0, 1.64, 0)), 
-				vector.multiply(player:get_look_dir(), 1)
-		)
-
-		local gren_vel = vector.add(
-				vector.multiply(player:get_look_dir(), 20), vector.new(0, 0, 0)
-			)
-		local ent = minetest.add_entity(gren_pos, weapon._grenade_ent)
-		local luaent = ent:get_luaentity()
-		ent:set_velocity(gren_vel)
-		local look_vertical = player:get_look_vertical()
-		local look_horizontal = player:get_look_horizontal()
-		ent:set_rotation(vector.new(-look_vertical, look_horizontal, 0))
-		ent:set_acceleration({x=0, y=-9.80, z=0})
+		weapon.on_thrown(player, weapon)
 		return
 	end
 	

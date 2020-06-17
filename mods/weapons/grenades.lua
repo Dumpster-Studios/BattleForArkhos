@@ -4,7 +4,7 @@
 
 local bounce_factor = 0.44
 
-local function register_grenade(name, effect)
+local function register_grenade(name, class, killfeed_name, stats)
 	local ent_table = {
 		visual = "mesh",
 		mesh = "grenade_" .. name .. ".obj",
@@ -106,107 +106,125 @@ local function register_grenade(name, effect)
 	end
 	
 	minetest.register_entity("weapons:".. name .."_grenade_ent", ent_table)
+
+	local copy_stats = table.copy(stats)
+
+	local grenade_node = {
+		_grenade_type = name,
+		_reload_node = "weapons:"..name.."_grenade_reload_red",
+		_kf_name = killfeed_name .. " Grenade",
+		_grenade_ent = "weapons:"..name.."_grenade_ent",
+		_mag = copy_stats._mag,
+		_reload = copy_stats._reload,
+		_damage = copy_stats._damage,
+		_name = name .. "_grenade",
+
+		drawtype = "mesh",
+		mesh = name .. "_grenade.b3d",
+		tiles = {"grenade.png", class.."_class_red.png"},
+		range = 1,
+		node_placement_prediction = "",
+
+		_crosshair = "railgun_crosshair.png",
+		_type = "grenade",
+		_ammo_type = "grenade",
+		_ammo_bg = "grenade_bg",
+		_fov_mult = 0,
+		_rpm = 200,
+		_pellets = 1,
+		_recoil = 0,
+		_no_reload_hud = true,
+		_phys_alt = 1,
+
+		on_place = function(itemstack, placer, pointed_thing)
+			return itemstack
+		end,
+		on_drop = function(itemstack, dropper, pointed_thing)
+			return itemstack
+		end
+	}
+
+	local grenade_reload = {
+		_reset_node = "weapons:"..name.."_grenade_red",
+		_kf_name = killfeed_name .. " Grenade",
+		
+		drawtype = "mesh",
+		mesh = "grenade_reload.b3d",
+		tiles = {class.."_class_red.png"},
+		range = 1,
+		node_placement_prediction = "",
+
+		_ammo_bg = "grenade",
+		_fov_mult = 0,
+		_crosshair = "railgun_crosshair.png",
+		_type = "grenade",
+		_ammo_type = "grenade",
+		_phys_alt = 1,
+		_no_reload_hud = true,
+
+		on_place = function(itemstack, placer, pointed_thing)
+			return itemstack
+		end,
+		on_drop = function(itemstack, dropper, pointed_thing)
+			return itemstack
+		end
+	}
+
+	function grenade_node.on_thrown(player, weapon)
+		local gren_pos = vector.add(
+			vector.add(player:get_pos(), vector.new(0, 1.64, 0)), 
+				vector.multiply(player:get_look_dir(), 1)
+		)
+
+		local gren_vel = vector.add(
+				vector.multiply(player:get_look_dir(), 12), vector.new(0, 0, 0)
+			)
+		local ent = minetest.add_entity(gren_pos, weapon._grenade_ent)
+		local luaent = ent:get_luaentity()
+		ent:set_velocity(gren_vel)
+		local look_vertical = player:get_look_vertical()
+		local look_horizontal = player:get_look_horizontal()
+		ent:set_rotation(vector.new(-look_vertical, look_horizontal, 0))
+		ent:set_acceleration({x=0, y=-9.80, z=0})
+		if weapon._grenade_type == "frag" then
+			for i=1, 3 do
+				minetest.add_particlespawner({
+					attached = ent,
+					amount = 30,
+					time = 0,
+					texture = "rocket_smoke_" .. i .. ".png",
+					collisiondetection = true,
+					collision_removal = false,
+					object_collision = false,
+					vertical = false,
+					minpos = vector.new(-0.15,-0.15,-0.15),
+					maxpos = vector.new(0.15,0.15,0.15),
+					minvel = vector.new(-1, 0.1, -1),
+					maxvel = vector.new(1, 0.75, 1),
+					minacc = vector.new(0,0,0),
+					maxacc = vector.new(0,0,0),
+					minsize = 7,
+					maxsize = 12,
+					minexptime = 2,
+					maxexptime = 6
+				})
+			end
+		end
+	end
+
+	local gren_blue = table.copy(grenade_node)
+	local gren_blue_rel = table.copy(grenade_reload)
+
+	minetest.register_node("weapons:"..name.."_grenade_red", grenade_node)
+	minetest.register_node("weapons:"..name.."_grenade_reload_red", grenade_reload)
+
+	gren_blue._reload_node = "weapons:"..name.."_grenade_reload_blue"
+	gren_blue.tiles = {"grenade.png", class.."_class_blue.png"}
+
+	gren_blue_rel._reset_node = "weapons:"..name.."_grenade_blue"
+	gren_blue_rel.tiles = {class.."_class_blue.png"}
+	minetest.register_node("weapons:"..name.."_grenade_blue", gren_blue)
+	minetest.register_node("weapons:"..name.."_grenade_reload_blue", gren_blue_rel)
 end
 
-register_grenade("frag")
-
-minetest.register_node("weapons:frag_grenade_red", {
-	drawtype = "mesh",
-	mesh = "frag_grenade.b3d",
-	tiles = {"grenade.png", "scout_class_red.png"},
-	range = 1,
-	node_placement_prediction = "",
-
-	_grenade_type = "frag",
-	_ammo_bg = "grenade_bg",
-	_reload_node = "weapons:frag_grenade_reload_red",
-	_kf_name = "Frag Grenade",
-	_fov_mult = 0,
-	_crosshair = "railgun_crosshair.png",
-	_type = "grenade",
-	_grenade_ent = "weapons:frag_grenade_ent",
-	_ammo_type = "grenade",
-	_name = "frag_grenade",
-	_pellets = 1,
-	_mag = 3,
-	_rpm = 150,
-	_reload = 15,
-	_no_reload_hud = true,
-	_damage = 35,
-	_recoil = 0,
-
-	on_place = function(itemstack, placer, pointed_thing)
-		return itemstack
-	end,
-	on_drop = function(itemstack, dropper, pointed_thing)
-		return itemstack
-	end
-})
-
-minetest.register_node("weapons:frag_grenade_reload_red", {
-	drawtype = "mesh",
-	mesh = "grenade_reload.b3d",
-	tiles = {"scout_class_red.png"},
-	range = 1,
-	node_placement_prediction = "",
-
-	_reset_node = "weapons:frag_grenade_red",
-	_ammo_bg = "grenade",
-	_kf_name = "Frag Grenade",
-	_fov_mult = 0,
-	_crosshair = "railgun_crosshair.png",
-	_type = "grenade",
-	_ammo_type = "grenade",
-	_phys_alt = 1,
-	_no_reload_hud = true
-})
-
-minetest.register_node("weapons:frag_grenade_blue", {
-	drawtype = "mesh",
-	mesh = "frag_grenade.b3d",
-	tiles = {"grenade.png", "scout_class_blue.png"},
-	range = 1,
-
-	_grenade_type = "frag",
-	_ammo_bg = "grenade_bg",
-	_reload_node = "weapons:frag_grenade_reload_blue",
-	_kf_name = "Frag Grenade",
-	_fov_mult = 0,
-	_crosshair = "railgun_crosshair.png",
-	_type = "grenade",
-	_grenade_ent = "weapons:frag_grenade_ent",
-	_ammo_type = "grenade",
-	_name = "frag_grenade",
-	_pellets = 1,
-	_mag = 3,
-	_rpm = 150,
-	_reload = 15,
-	_no_reload_hud = true,
-	_damage = 35,
-	_recoil = 0,
-
-	on_place = function(itemstack, placer, pointed_thing)
-		return itemstack
-	end,
-	on_drop = function(itemstack, dropper, pointed_thing)
-		return itemstack
-	end
-})
-
-minetest.register_node("weapons:frag_grenade_reload_blue", {
-	drawtype = "mesh",
-	mesh = "grenade_reload.b3d",
-	tiles = {"scout_class_blue.png"},
-	range = 1,
-	node_placement_prediction = "",
-
-	_reset_node = "weapons:frag_grenade_blue",
-	_ammo_bg = "grenade",
-	_kf_name = "Frag Grenade",
-	_fov_mult = 0,
-	_crosshair = "railgun_crosshair.png",
-	_type = "grenade",
-	_ammo_type = "grenade",
-	_phys_alt = 1,
-	_no_reload_hud = true
-})
+register_grenade("frag", "scout", "Frag", {_reload = 15, _mag = 3, _damage=35, _fuse=4})
