@@ -404,12 +404,18 @@ minetest.register_on_player_receive_fields(function(player,
 			if result < dist then
 				weapons.player.set_class(player, "assault")
 				weapons.player.cancel_reload(player)
+			elseif weapons.player_list[player:get_player_name()].class == nil then
+				weapons.player.set_class(player, "assault")
+				weapons.player.cancel_reload(player)
 			else
 				minetest.chat_send_player(pname, 
 					"You can only change class at your team's base!")
 			end
 		elseif fields.marksman then
 			if result < dist then
+				weapons.player.set_class(player, "marksman")
+				weapons.player.cancel_reload(player)
+			elseif weapons.player_list[player:get_player_name()].class == nil then
 				weapons.player.set_class(player, "marksman")
 				weapons.player.cancel_reload(player)
 			else
@@ -420,12 +426,18 @@ minetest.register_on_player_receive_fields(function(player,
 			if result < dist then
 				weapons.player.set_class(player, "medic")
 				weapons.player.cancel_reload(player)
+			elseif weapons.player_list[player:get_player_name()].class == nil then
+				weapons.player.set_class(player, "medic")
+				weapons.player.cancel_reload(player)
 			else
 				minetest.chat_send_player(pname, 
 					"You can only change class at your team's base!")
 			end
 		elseif fields.scout then
 			if result < dist then
+				weapons.player.set_class(player, "scout")
+				weapons.player.cancel_reload(player)
+			elseif weapons.player_list[player:get_player_name()].class == nil then
 				weapons.player.set_class(player, "scout")
 				weapons.player.cancel_reload(player)
 			else
