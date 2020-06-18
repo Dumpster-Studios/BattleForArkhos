@@ -17,7 +17,8 @@ local function register_grenade(name, class, killfeed_name, stats)
 		_type = name,
 		_fuse_started = false,
 		_fuse = 20,
-		_timer = 0
+		_timer = 0,
+		_player_ref = nil,
 	}
 
 	function ent_table:smoke_grenade(self)
@@ -170,7 +171,7 @@ local function register_grenade(name, class, killfeed_name, stats)
 		end
 	}
 
-	function grenade_node.on_thrown(player, weapon)
+	function grenade_node.on_fire(player, weapon)
 		local gren_pos = vector.add(
 			vector.add(player:get_pos(), vector.new(0, 1.64, 0)), 
 				vector.multiply(player:get_look_dir(), 1)
@@ -181,6 +182,8 @@ local function register_grenade(name, class, killfeed_name, stats)
 			)
 		local ent = minetest.add_entity(gren_pos, weapon._grenade_ent)
 		local luaent = ent:get_luaentity()
+		luaent._player_ref = player
+		
 		ent:set_velocity(gren_vel)
 		local look_vertical = player:get_look_vertical()
 		local look_horizontal = player:get_look_horizontal()

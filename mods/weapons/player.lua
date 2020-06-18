@@ -387,6 +387,14 @@ minetest.register_chatcommand("class", {
 	end,
 })
 
+minetest.register_chatcommand("respawn", {
+	description = "Respawn back to base if stuck.",
+	func = function(name, param)
+		local player = minetest.get_player_by_name(name)
+		weapons.respawn_player(player, false)
+	end,
+})
+
 minetest.register_on_player_receive_fields(function(player, 
 		formname, fields)
 	local pname = player:get_player_name()

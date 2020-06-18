@@ -2,30 +2,6 @@
 -- Author: Jordach
 -- License: Reserved
 
-function weapons.calc_block_damage(nodedef, weapon, target_pos, pointed)
-	if nodedef == nil then
-	elseif nodedef.name == "air" then
-		return 0, "air"
-	elseif nodedef.name == "ignore" then
-		return 0, "air"
-	elseif nodedef._health == nil then
-		weapons.spray_particles(pointed, nodedef, target_pos)
-		return 0, "air"
-	elseif not nodedef._takes_damage then
-		weapons.spray_particles(pointed, nodedef, target_pos)
-		return 0, nodedef.name
-	else
-		local nodedamage = nodedef._health - weapon._break_hits
-		if nodedamage < 1 then
-			weapons.spray_particles(pointed, nodedef, target_pos)
-			return 0, "air"
-		else
-			weapons.spray_particles(pointed, nodedef, target_pos)
-			return nodedamage, nodedef._name.."_"..nodedamage
-		end
-	end
-end
-
 local function rocket_explode_damage_blocks(pos)
 	local bpos = table.copy(pos)
 	local weapon = table.copy(minetest.registered_nodes["weapons:rocket_launcher_red"])
@@ -33,16 +9,89 @@ local function rocket_explode_damage_blocks(pos)
 		for y=-1, 1 do
 			for z=-1, 1 do
 				local npos = {x=bpos.x+x, y=bpos.y+y, z=bpos.z+z}
-				local nodedef = minetest.registered_nodes[minetest.get_node(npos).name]
+				local nodedef = table.copy(minetest.registered_nodes[minetest.get_node(npos).name])
 				if nodedef == nil then
 				elseif nodedef._takes_damage == nil then
 					weapon._break_hits = math.random(1, 4)
-					local damage, node = weapons.calc_block_damage(nodedef, weapon, npos)
-					minetest.set_node(npos, {name=node})
+					local damage, node, result = weapons.calc_block_damage(nodedef, weapon, npos)
+					if result == nil then
+						minetest.set_node(npos, {name=node})
+					end
 				end
 			end
 		end
 	end
+end
+
+local function launch_rocket(player, weapon)
+	-- Handle recoil of the equipped weapon
+	solarsail.util.functions.apply_recoil(player, weapon)
+
+	local rocket_pos = vector.add(
+		vector.add(player:get_pos(), vector.new(0, 1.64, 0)), 
+			vector.multiply(player:get_look_dir(), 1)
+	)
+
+	local rocket_vel = vector.add(
+			vector.multiply(player:get_look_dir(), 45), vector.new(0, 0, 0)
+		)
+	local ent = minetest.add_entity(rocket_pos, "weapons:rocket_ent")
+
+	local luaent = ent:get_luaentity()
+	luaent._player_ref = player
+
+	luaent._loop_sound_ref = 
+			minetest.sound_play({name="rocket_fly"}, 
+				{object=ent, max_hear_distance=32, gain=1.2, loop=true})
+
+	-- Commit audio suicide when attached audio stops working:tm:
+	minetest.after(15, minetest.sound_stop, luaent._loop_sound_ref)
+	local look_vertical = player:get_look_vertical()
+	local look_horizontal = player:get_look_horizontal()
+	for i=1, 3 do
+		minetest.add_particlespawner({
+			attached = ent,
+			amount = 30,
+			time = 0,
+			texture = "rocket_smoke_" .. i .. ".png",
+			collisiondetection = true,
+			collision_removal = false,
+			object_collision = false,
+			vertical = false,
+			minpos = vector.new(-0.15,-0.15,-0.15),
+			maxpos = vector.new(0.15,0.15,0.15),
+			minvel = vector.new(-1, 0.1, -1),
+			maxvel = vector.new(1, 0.75, 1),
+			minacc = vector.new(0,0,0),
+			maxacc = vector.new(0,0,0),
+			minsize = 7,
+			maxsize = 12,
+			minexptime = 2,
+			maxexptime = 6
+		})
+	end
+	minetest.add_particlespawner({
+		attached = ent,
+		amount = 15,
+		time = 0,
+		texture = "rocket_fire.png",
+		collisiondetection = true,
+		collision_removal = false,
+		vertical = false,
+		minpos = vector.new(0,0,0),
+		maxpos = vector.new(0,0,0),
+		minvel = vector.new(0,0,0),
+		maxvel = vector.new(0,0,0),
+		minacc = vector.new(0,0,0),
+		maxacc = vector.new(0,0,0),
+		minsize = 4.5,
+		maxsize = 9,
+		minexptime = 0.1,
+		maxexptime = 0.3,
+		glow = 14
+	})
+	ent:set_velocity(rocket_vel)
+	ent:set_rotation(vector.new(-look_vertical, look_horizontal, 0))
 end
 
 local rocket_ent = {
@@ -164,7 +213,7 @@ local launcher_def_red = {
 	_rpm = 80,
 	_reload = 3,
 	_damage = 65,
-	_recoil = 0,
+	_recoil = 3,
 	_phys_alt = 1,
 	_break_hits = 2,
 
@@ -173,7 +222,9 @@ local launcher_def_red = {
 	end,
 	on_drop = function(itemstack, dropper, pointed_thing)
 		return itemstack
-	end
+	end,
+
+	on_fire = launch_rocket,
 }
 minetest.register_node("weapons:rocket_launcher_red", launcher_def_red)
 

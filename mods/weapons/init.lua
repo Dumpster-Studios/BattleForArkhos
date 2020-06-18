@@ -92,6 +92,30 @@ function solarsail.util.functions.pos_to_dist(pos_1, pos_2)
 	return math.sqrt(res.x*res.x + res.y*res.y + res.z*res.z)
 end
 
+function weapons.calc_block_damage(nodedef, weapon, target_pos, pointed)
+	if nodedef == nil then
+	elseif nodedef.name == "air" then
+		return 0, "air", nil
+	elseif nodedef.name == "ignore" then
+		return 0, "air", nil
+	elseif nodedef._health == nil then
+		weapons.spray_particles(pointed, nodedef, target_pos)
+		return 0, "air", nil
+	elseif nodedef._takes_damage == nil then
+		local nodedamage = nodedef._health - weapon._break_hits
+		if nodedamage < 1 then
+			weapons.spray_particles(pointed, nodedef, target_pos)
+			return 0, "air", nil
+		else
+			weapons.spray_particles(pointed, nodedef, target_pos)
+			return nodedamage, nodedef._name.."_"..nodedamage, nil
+		end
+	else
+		weapons.spray_particles(pointed, nodedef, target_pos)
+		return 0, nodedef.name, false
+	end
+end
+
 function weapons.spray_particles(pointed, nodedef, target_pos)
 	local npos
 	if pointed == nil then
@@ -354,185 +378,6 @@ local function wait(pointed, player, weapon, target_pos, dist)
 	end
 end
 
-local function shoot(player, weapon)
-	local pname = player:get_player_name()
-	-- Handle recoil;
-	solarsail.util.functions.apply_recoil(player, weapon)
-	
-	if weapon._type == "rocket" then
-		local rocket_pos = vector.add(
-			vector.add(player:get_pos(), vector.new(0, 1.64, 0)), 
-				vector.multiply(player:get_look_dir(), 1)
-		)
-
-		local rocket_vel = vector.add(
-				vector.multiply(player:get_look_dir(), 45), vector.new(0, 0, 0)
-			)
-		local ent = minetest.add_entity(rocket_pos, "weapons:rocket_ent")
-
-		local luaent = ent:get_luaentity()
-		luaent._player_ref = player
-
-		luaent._loop_sound_ref = 
-				minetest.sound_play({name="rocket_fly"}, 
-					{object=ent, max_hear_distance=32, gain=1.2, loop=true})
-		-- Commit audio suicide when attached audio stops working:tm:
-		minetest.after(15, minetest.sound_stop, luaent._loop_sound_ref)
-		local look_vertical = player:get_look_vertical()
-		local look_horizontal = player:get_look_horizontal()
-		for i=1, 3 do
-			minetest.add_particlespawner({
-				attached = ent,
-				amount = 30,
-				time = 0,
-				texture = "rocket_smoke_" .. i .. ".png",
-				collisiondetection = true,
-				collision_removal = false,
-				object_collision = false,
-				vertical = false,
-				minpos = vector.new(-0.15,-0.15,-0.15),
-				maxpos = vector.new(0.15,0.15,0.15),
-				minvel = vector.new(-1, 0.1, -1),
-				maxvel = vector.new(1, 0.75, 1),
-				minacc = vector.new(0,0,0),
-				maxacc = vector.new(0,0,0),
-				minsize = 7,
-				maxsize = 12,
-				minexptime = 2,
-				maxexptime = 6
-			})
-		end
-		minetest.add_particlespawner({
-			attached = ent,
-			amount = 15,
-			time = 0,
-			texture = "rocket_fire.png",
-			collisiondetection = true,
-			collision_removal = false,
-			vertical = false,
-			minpos = vector.new(0,0,0),
-			maxpos = vector.new(0,0,0),
-			minvel = vector.new(0,0,0),
-			maxvel = vector.new(0,0,0),
-			minacc = vector.new(0,0,0),
-			maxacc = vector.new(0,0,0),
-			minsize = 4.5,
-			maxsize = 9,
-			minexptime = 0.1,
-			maxexptime = 0.3,
-			glow = 14
-		})
-		ent:set_velocity(rocket_vel)
-		ent:set_rotation(vector.new(-look_vertical, look_horizontal, 0))
-		return
-	elseif weapon._type == "grenade" then
-		weapon.on_thrown(player, weapon)
-		return
-	end
-	
-	for i=1, weapon._pellets do
-		-- Ray calculations.
-		local raybegin = vector.add(player:get_pos(), {x=0, y=1.64, z=0})
-		local raygunbegin = vector.add(player:get_pos(), {x=0, y=1.2, z=0})
-		local raymod = vector.add(
-			vector.multiply(player:get_look_dir(), weapon._range), 
-			{
-				x=math.random(weapon._spread_min, weapon._spread_max),
-				y=math.random(weapon._spread_min, weapon._spread_max),
-				z=math.random(weapon._spread_min, weapon._spread_max)
-			}
-		)
-		local rayend = vector.add(raybegin, raymod)
-		local ray = minetest.raycast(raybegin, rayend, true, false)
-		local pointed = ray:next()
-		pointed = ray:next()
-		local target_pos
-
-		if weapon._type == nil then
-		elseif weapon._type == "gun" then
-			if weapon._tracer == nil then
-			else
-				local tracer_pos = vector.add(
-					vector.add(player:get_pos(), vector.new(0, 1.2, 0)), 
-						vector.multiply(player:get_look_dir(), 1)
-				)
-				local yp = solarsail.util.functions.y_direction(player:get_look_vertical(), 20)
-				local px, pz = solarsail.util.functions.yaw_to_vec(player:get_look_horizontal(), 20, false)
-				local pv = vector.add(raybegin, {x=px, y=yp, z=pz})
-				local pr = vector.add(pv, raymod)
-
-				local tracer_vel = vector.add(
-					vector.multiply(vector.direction(pv, pr), 120), 
-						vector.new(0, 0.44, 0)
-				)
-				
-				local xz, y = solarsail.util.functions.get_3d_angles(
-					vector.add(player:get_pos(), vector.new(0, 1.64, 0)),
-					vector.add(tracer_pos, tracer_vel)				
-				)
-
-				local ent = minetest.add_entity(tracer_pos, 
-								"weapons:tracer_" .. weapon._tracer)
-
-				ent:set_velocity(tracer_vel)
-				ent:set_rotation(vector.new(y, xz, 0))
-			end
-		end
-
-		if pointed == nil then
-			if weapon._type == "block" then
-				weapons.player_list[pname].blocks =
-					weapons.player_list[pname].blocks + 1
-			end
-		else
-			-- Handle target;
-			if pointed.type == "object" then
-				target_pos = pointed.ref:get_pos()
-			else
-				target_pos = pointed.under
-			end
-		end
-		
-		-- Calculate time to target and distance to target;
-		if target_pos == nil then
-		else
-			local dist = solarsail.util.functions.pos_to_dist(raybegin, target_pos)
-
-			if weapon._type == "tool" then
-				minetest.after(dist/weapon._speed, wait, pointed, player,
-					weapon, target_pos, dist)
-			elseif weapon._type == "flag" then
-				minetest.after(dist/weapon._speed, wait, pointed, player,
-					weapon, target_pos, dist)
-			elseif weapon._type == "tool_alt" or weapon._type == "flag" then
-				minetest.after(dist/weapon._speed, wait, pointed, player,
-					weapon, target_pos, dist)
-			elseif dist > 1 then -- Prevent damage close to you
-				if weapon._type == "gun" then
-					minetest.after(dist/weapon._speed, wait, pointed, player,
-						weapon, target_pos, dist)
-				elseif pointed.type ~= "object" then
-					local block_pos = table.copy(pointed.above)
-					if pointed.intersection_normal.y < 1 then
-						-- Fixes placing on sides and below
-						block_pos.y = block_pos.y + 1
-					end
-					local check = minetest.get_node(block_pos).name
-					if check == "core:base_door" then
-						weapons.player_list[pname].blocks =
-							weapons.player_list[pname].blocks + 1
-						return
-					end
-					minetest.place_node(block_pos, 
-						{name="core:"..weapon._node.."_"
-							..weapons.player_list[pname].team.."_4"})
-				end
-			end
-		end
-	end
-
-end
-
 local health_pos = {x=0.325, y=0.825}
 local ammo_pos = {x=0.675, y=0.825}
 local player_phys = {}
@@ -787,7 +632,7 @@ local function weapon_controls()
 					local ammo = weapon._ammo_type
 					if weapons.player_list[pname][ammo] > 0 then
 						if not weapons.is_reloading[pname][wield] then
-							shoot(player, weapon)
+							weapon.on_fire(player, weapon)
 							minetest.sound_play({name=weapon._firing_sound}, 
 								{pos=player:get_pos(), max_hear_distance=128, gain=1.75})
 							weapons.player_list[player:get_player_name()][ammo] = 
@@ -811,14 +656,14 @@ local function weapon_controls()
 					end
 				elseif weapon._type == "block" then
 					if weapons.player_list[player:get_player_name()].blocks > 0 then
-						shoot(player, weapon)
+						weapon.on_fire(player, weapon)
 						weapons.player_list[player:get_player_name()].blocks = 
 							weapons.player_list[player:get_player_name()].blocks - 1
 					end
 				elseif weapon._type == "tool" then
-					shoot(player, weapon)
+					weapon.on_fire(player, weapon)
 				elseif weapon._type == "tool_alt" then
-					shoot(player, weapon)
+					weapon.on_fire(player, weapon)
 				end
 			end
 		end
@@ -1054,14 +899,23 @@ end
 
 -- We now have access to other functions defined here:
 dofile(minetest.get_modpath("weapons").."/skybox.lua")
-dofile(minetest.get_modpath("weapons").."/blocks.lua")
+dofile(minetest.get_modpath("weapons").."/builtin_blocks.lua")
 dofile(minetest.get_modpath("weapons").."/weapons.lua")
 dofile(minetest.get_modpath("weapons").."/player.lua")
 dofile(minetest.get_modpath("weapons").."/game.lua")
 dofile(minetest.get_modpath("weapons").."/mapgen.lua")
-dofile(minetest.get_modpath("weapons").."/rocketry.lua")
 dofile(minetest.get_modpath("weapons").."/tracers.lua")
-dofile(minetest.get_modpath("weapons").."/grenades.lua")
+
+-- External weapons
+dofile(minetest.get_modpath("weapons").."/weapons/assault_rifle.lua")
+dofile(minetest.get_modpath("weapons").."/weapons/railgun.lua")
+dofile(minetest.get_modpath("weapons").."/weapons/smg.lua")
+dofile(minetest.get_modpath("weapons").."/weapons/shotgun.lua")
+dofile(minetest.get_modpath("weapons").."/weapons/tools.lua")
+dofile(minetest.get_modpath("weapons").."/weapons/blocks.lua")
+dofile(minetest.get_modpath("weapons").."/weapons/rocketry.lua")
+dofile(minetest.get_modpath("weapons").."/weapons/grenades.lua")
+
 
 minetest.register_on_player_receive_fields(
 			function(player, formname, fields)

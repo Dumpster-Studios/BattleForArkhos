@@ -350,7 +350,8 @@ weapons.register_block("core:slab_blue", {
 
 minetest.register_node(":core:base_block", {
 	tiles = {"core_neutral.png"},
-	_takes_damage = false
+	_takes_damage = false,
+	_health = 100,
 })
 
 minetest.register_node(":core:base_door", {
@@ -362,6 +363,7 @@ minetest.register_node(":core:base_door", {
 	sunlight_propagates = true,
 	--tiles = {"core_azan_leaves.png"},
 	--drawtype = "allfaces_optional",
+	_health = 100,
 })
 
 local function rotate_and_place(itemstack, placer, pointed_thing)
@@ -393,6 +395,7 @@ end
 
 minetest.register_node(":core:base_slab", {
 	_takes_damage = false,
+	_health = 100,
 	tiles = {"core_neutral.png"},
 	paramtype = "light",
 	drawtype = "nodebox",
@@ -439,6 +442,7 @@ minetest.register_node(":core:base_slab", {
 
 minetest.register_node(":core:base_stair", {
 	_takes_damage = false,
+	_health = 100,
 	tiles = {"core_neutral.png"},
 	paramtype = "light",
 	drawtype = "nodebox",
@@ -461,6 +465,7 @@ minetest.register_node(":core:base_stair", {
 
 minetest.register_node(":core:base_lamp", {
 	_takes_damage = false,
+	_health = 100,
 	tiles = {"core_neutral_lamp.png"},
 	paramtype = "light",
 	light_source = 14

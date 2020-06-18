@@ -48,715 +48,268 @@ function weapons.register_weapon(name, def, def_alt, def_reload, texture, class_
 	minetest.register_node(name .. "_reload_blue", node_reload)
 end
 
-weapons.register_weapon("weapons:assault_rifle",
-{ -- Default
-	drawtype = "mesh",
-	mesh = "assault_rifle_fp.b3d",
-	use_texture_alpha = true,
-	range = 1,
+function weapons.raycast_bullet(player, weapon)
+	local pname = player:get_player_name()
 
-	_ammo_bg = "bullet_bg",
-	_kf_name = "Assault Rifle",
-	_fov_mult = 0,
-	_crosshair = "assault_crosshair.png",
-	_type = "gun",
-	_ammo_type = "primary",
-	_firing_sound = "ass_rifle_fire",
-	_casing_sound = "ass_rifle_casing",
-	_reload_sound = "ass_rifle_reload",
-	_name = "assault_rifle",
-	_pellets = 1,
-	_mag = 30,
-	_rpm = 500,
-	_reload = 3,
-	_speed = 800, -- Meters per second
-	_range = 150,
-	_damage = 10,
-	_break_hits = 1,
-	_recoil = 3,
-	_spread_min = -4,
-	_spread_max = 4,
-	_tracer = "ar",
-	_phys_alt = 1,
+	-- Handle recoil of the equipped weapon
+	solarsail.util.functions.apply_recoil(player, weapon)
 
-	on_place = function(itemstack, placer, pointed_thing)
-		return itemstack
-	end,
-	on_drop = function(itemstack, dropper, pointed_thing)
-		return itemstack
+	for i=1, weapon._pellets do
+		-- Ray calculations.
+		local raybegin = vector.add(player:get_pos(), {x=0, y=1.64, z=0})
+		local raygunbegin = vector.add(player:get_pos(), {x=0, y=1.2, z=0})
+		local raymod = vector.add(
+			vector.multiply(player:get_look_dir(), weapon._range), 
+			{
+				x=math.random(weapon._spread_min, weapon._spread_max),
+				y=math.random(weapon._spread_min, weapon._spread_max),
+				z=math.random(weapon._spread_min, weapon._spread_max)
+			}
+		)
+		local rayend = vector.add(raybegin, raymod)
+		local ray = minetest.raycast(raybegin, rayend, true, false)
+		local pointed = ray:next()
+		pointed = ray:next()
+		local target_pos
+
+		if weapon._tracer == nil then
+		else
+			local tracer_pos = vector.add(
+				vector.add(player:get_pos(), vector.new(0, 1.2, 0)), 
+					vector.multiply(player:get_look_dir(), 1)
+			)
+			local yp = solarsail.util.functions.y_direction(player:get_look_vertical(), 20)
+			local px, pz = solarsail.util.functions.yaw_to_vec(player:get_look_horizontal(), 20, false)
+			local pv = vector.add(raybegin, {x=px, y=yp, z=pz})
+			local pr = vector.add(pv, raymod)
+
+			local tracer_vel = vector.add(
+				vector.multiply(vector.direction(pv, pr), 120), 
+					vector.new(0, 0.44, 0)
+			)
+			
+			local xz, y = solarsail.util.functions.get_3d_angles(
+				vector.add(player:get_pos(), vector.new(0, 1.64, 0)),
+				vector.add(tracer_pos, tracer_vel)				
+			)
+
+			local ent = minetest.add_entity(tracer_pos, 
+							"weapons:tracer_" .. weapon._tracer)
+
+			ent:set_velocity(tracer_vel)
+			ent:set_rotation(vector.new(y, xz, 0))
+		end
+
+		if pointed == nil then
+		else
+			-- Handle target;
+			if pointed.type == "object" then
+				target_pos = pointed.ref:get_pos()
+			else
+				target_pos = pointed.under
+			end
+		end
+
+		-- Calculate time to target and distance to target;
+		if target_pos == nil then
+		else
+			local dist = solarsail.util.functions.pos_to_dist(raybegin, target_pos)
+
+			minetest.after(dist/weapon._speed, weapon.bullet_on_hit, pointed, player,
+				weapon, target_pos, dist)
+		end
 	end
-}, 
-{ -- Alt
-	drawtype = "mesh",
-	mesh = "assault_rifle_alt_fp.b3d",
-	use_texture_alpha = true,
-	range = 1,
+end
 
-	_ammo_bg = "bullet_bg",
-	_kf_name = "Assault Rifle",
-	_fov_mult = 0.75,
-	_crosshair = "railgun_crosshair.png",
-	_type = "gun",
-	_ammo_type = "primary",
-	_firing_sound = "ass_rifle_fire",
-	_casing_sound = "ass_rifle_casing", 
-	_reload_sound = "ass_rifle_reload",
-	_name = "assault_rifle",
-	_pellets = 1,
-	_mag = 30,
-	_rpm = 125,
-	_reload = 3,
-	_speed = 800, -- Meters per second
-	_range = 150,
-	_damage = 20,
-	_break_hits = 3,
-	_recoil = 1.5,
-	_spread_min = 0,
-	_spread_max = 0,
-	_tracer = "ar",
-	_phys_alt = 0.45,
-	_is_alt = true,
+function weapons.bullet_on_hit(pointed, player, weapon, target_pos, dist)
+	if pointed.type == "object" then
+		local t_pos = pointed.ref:get_pos()
+		if t_pos == nil then return end
+		local diff = solarsail.util.functions.pos_to_dist(t_pos, target_pos)
+		if diff < 0.31 then
+			if pointed.ref:is_player() then
+				weapons.handle_damage(weapon, player, pointed.ref, dist)
+			end
+		end
+	else
+		for _, players in ipairs(minetest.get_connected_players()) do
+			if player:get_player_name() ~= players:get_player_name() then
+				local ppos = players:get_pos()
+				local splash_dist = solarsail.util.functions.pos_to_dist(ppos, pointed.intersection_point)
+				if splash_dist < 0.61 then
+					weapons.handle_damage(weapon, player, players, dist)
+					return
+				end
+			end
+		end
 
-	on_place = function(itemstack, placer, pointed_thing)
-		return itemstack
-	end,
-	on_drop = function(itemstack, dropper, pointed_thing)
-		return itemstack
+		local nodedef = minetest.registered_nodes[minetest.get_node(target_pos).name]
+		minetest.sound_play("block_impact", {pos=target_pos, 
+			max_hear_distance=8, gain=0.875}, true)
+
+		if nodedef == nil then
+		else
+			local damage, node, result = weapons.calc_block_damage(nodedef, weapon, target_pos, pointed)
+			if result == nil then
+				minetest.set_node(target_pos, {name=node})
+				minetest.check_for_falling(target_pos)
+			end
+		end
 	end
-},
-{ -- Reloading
-	--tiles = {"assault_rifle.png", "assault_class_blue.png"},
-	drawtype = "mesh",
-	mesh = "assault_rifle_reload_fp.b3d",
-	use_texture_alpha = true,
-	range = 1,
+end
 
-	_ammo_bg = "bullet_bg",
-	_kf_name = "Assault Rifle",
-	_damage = 10,
-	_mag = 30,
-	_fov_mult = 0,
-	_type = "gun",
-	_ammo_type = "primary",
-	_phys_alt = 0.75,
+function weapons.raycast_melee(player, weapon)
+	-- Ray calculations.
+	local raybegin = vector.add(player:get_pos(), {x=0, y=1.64, z=0})
+	local raymod = vector.multiply(player:get_look_dir(), weapon._range)
+	local rayend = vector.add(raybegin, raymod)
+	local ray = minetest.raycast(raybegin, rayend, true, false)
+	local pointed = ray:next()
+	pointed = ray:next()
+	local target_pos
 
-	on_place = function(itemstack, placer, pointed_thing)
-		return itemstack
-	end,
-	on_drop = function(itemstack, dropper, pointed_thing)
-		return itemstack
+	if pointed == nil then
+	else
+		-- Handle target;
+		if pointed.type == "object" then
+			target_pos = pointed.ref:get_pos()
+		else
+			target_pos = pointed.under
+		end
 	end
-}, "assault_rifle.png", "assault_class")
 
-weapons.register_weapon("weapons:railgun",
-{
-	drawtype = "mesh",
-	mesh = "railgun_fp.b3d",
-	range = 1,
-
-	_ammo_bg = "rail_bg",
-	_kf_name = "Railgun",
-	_alt_mode = "weapons:railgun_alt",
-	_fov_mult = 0,
-	_crosshair = "railgun_crosshair.png",
-	_type = "gun",
-	_ammo_type = "primary",
-	_firing_sound = "railgun_fire",
-	_casing_sound = "railgun_charge",
-	_reload_sound = "railgun_reload",
-	_tp_model = "railgun_tp.x",
-	_name = "railgun",
-	_pellets = 1,
-	_mag = 4,
-	_rpm = 75,
-	_reload = 5.25,
-	_reload_node = "weapons:railgun_reload",
-	_speed = 2000,
-	_range = 500,
-	_damage = 85,
-	_break_hits = 4,
-	_recoil = 20,
-	_spread_min = -50,
-	_spread_max = 50,
-	_tracer = "railgun",
-	_phys_alt = 1,
-
-	on_place = function(itemstack, placer, pointed_thing)
-		return itemstack
-	end,
-	on_drop = function(itemstack, dropper, pointed_thing)
-		return itemstack
+	-- Calculate time to target and distance to target;
+	if target_pos == nil then
+	else
+		local dist = solarsail.util.functions.pos_to_dist(raybegin, target_pos)
+		minetest.after(dist/weapon._speed, weapon.melee_on_hit, pointed, player,
+			weapon, target_pos, dist)
 	end
-},
-{
-	drawtype = "mesh",
-	mesh = "railgun_fp.b3d",
-	range = 1,
-	
-	_ammo_bg = "rail_bg",
-	_kf_name = "Railgun",
-	_alt_mode = "weapons:railgun",
-	_fov_mult = 0.2,
-	_crosshair = "railgun_crosshair.png",
-	_type = "gun",
-	_ammo_type = "primary",
-	_firing_sound = "railgun_fire",
-	_casing_sound = "railgun_charge",
-	_reload_sound = "railgun_reload",
-	_tp_model = "railgun_tp.x",
-	_name = "railgun",
-	_pellets = 1,
-	_mag = 4,
-	_rpm = 75,
-	_reload = 5.25,
-	_reload_node = "weapons:railgun_reload",
-	_speed = 2000,
-	_range = 500,
-	_damage = 85,
-	_break_hits = 4,
-	_recoil = 10,
-	_spread_min = 0,
-	_spread_max = 0,
-	_tracer = "railgun",
-	_phys_alt = 0.25,
-	_is_alt = true,
+end
 
-	on_place = function(itemstack, placer, pointed_thing)
-		return itemstack
-	end,
-	on_drop = function(itemstack, dropper, pointed_thing)
-		return itemstack
+function weapons.melee_on_hit(pointed, player, weapon, target_pos, dist)
+	if pointed.type == "object" then
+		if pointed.ref:is_player() then
+			weapons.handle_damage(weapon, player, pointed.ref, dist)
+		end
+	else
+		local nodedef = minetest.registered_nodes[minetest.get_node(target_pos).name]
+
+		if nodedef == nil then
+		else
+			local damage, node, result = weapons.calc_block_damage(nodedef, weapon, target_pos, pointed)
+			if result == nil then
+				minetest.set_node(target_pos, {name=node})
+			end
+			if damage < 1 then
+				if weapon._type == "tool" then
+					if weapons.player_list[player:get_player_name()].blocks <
+					weapons.player_list[player:get_player_name()].blocks_max then
+						weapons.player_list[player:get_player_name()].blocks =
+						weapons.player_list[player:get_player_name()].blocks + 1
+					end
+				elseif weapon._type == "tool_alt" then
+					local alt_pos = {x=target_pos.x, y=target_pos.y-1, z=target_pos.z}
+					local alt_node = minetest.registered_nodes[minetest.get_node(alt_pos).name]
+
+					-- Stop entrenching tools digging into bases
+					if alt_node._takes_damage == nil then
+						if result == nil then
+							minetest.set_node(alt_pos, {name="air"})
+							weapons.spray_particles(nil, nodedef,
+								{x=target_pos.x, y=target_pos.y-1, z=target_pos.z})
+						end
+					end
+				end
+			end
+			minetest.check_for_falling(target_pos)
+		end
 	end
-},
-{
-	drawtype = "mesh",
-	mesh = "railgun_reload_fp.b3d",
-	use_texture_alpha = true,
-	range = 1,
+end
 
-	_ammo_bg = "rail_bg",
-	_kf_name = "Railgun",
-	_damage = 85,
-	_mag = 4,
-	_reset_node = "weapons:railgun",
-	_tp_model = "railgun_tp.x",
-	_fov_mult = 0,
-	_type = "gun",
-	_ammo_type = "primary",
-	_phys_alt = 0.85,
-	
-	on_place = function(itemstack, placer, pointed_thing)
-		return itemstack
-	end,
-	on_drop = function(itemstack, dropper, pointed_thing)
-		return itemstack
+function weapons.raycast_flag_melee(player, weapon)
+	-- Ray calculations.
+	local raybegin = vector.add(player:get_pos(), {x=0, y=1.64, z=0})
+	local raymod = vector.multiply(player:get_look_dir(), weapon._range)
+	local rayend = vector.add(raybegin, raymod)
+	local ray = minetest.raycast(raybegin, rayend, true, false)
+	local pointed = ray:next()
+	pointed = ray:next()
+	local target_pos
+
+	if pointed == nil then
+	else
+		-- Handle target;
+		if pointed.type == "object" then
+			target_pos = pointed.ref:get_pos()
+		else
+			target_pos = pointed.under
+		end
 	end
-}, "railgun.png", "sniper_class")
 
-weapons.register_weapon("weapons:smg",
-{
-	drawtype = "mesh",
-	mesh = "smg_fp.b3d",
-	range = 1,
-
-	_ammo_bg = "bullet_bg",
-	_kf_name = "SMG",
-	_alt_mode = "weapons:smg_alt",
-	_fov_mult = 0,
-	_crosshair = "smg_crosshair.png",
-	_type = "gun",
-	_ammo_type = "primary",
-	_firing_sound = "smg_fire",
-	_casing_sound = "smg_casing",
-	_reload_sound = "smg_reload",
-	_name = "smg",
-	_pellets = 1,
-	_mag = 65,
-	_rpm = 1200,
-	_reload = 3.7,
-	_reload_node = "weapons:smg_reload",
-	_speed = 650,
-	_range = 140,
-	_damage = 3,
-	_heals = 5,
-	_break_hits = 1,
-	_recoil = 1.05,
-	_spread_min = -7,
-	_spread_max = 7,
-	_tracer = "smg",
-	_phys_alt = 1,
-
-	on_place = function(itemstack, placer, pointed_thing)
-		return itemstack
-	end,
-	on_drop = function(itemstack, dropper, pointed_thing)
-		return itemstack
+	-- Calculate time to target and distance to target;
+	if target_pos == nil then
+	else
+		local dist = solarsail.util.functions.pos_to_dist(raybegin, target_pos)
+		minetest.after(dist/weapon._speed, weapon.flag_on_hit, pointed, player,
+			weapon, target_pos, dist)
 	end
-},
-{
-	drawtype = "mesh",
-	mesh = "smg_alt_fp.b3d",
-	range = 1,
+end
 
-	_ammo_bg = "bullet_bg",
-	_kf_name = "SMG",
-	_alt_mode = "weapons:smg",
-	_fov_mult = 0.85,
-	_crosshair = "assault_crosshair.png",
-	_type = "gun",
-	_ammo_type = "primary",
-	_firing_sound = "smg_fire",
-	_casing_sound = "smg_casing",
-	_reload_sound = "smg_reload",
-	_name = "smg",
-	_pellets = 1,
-	_mag = 65,
-	_rpm = 900,
-	_reload = 3.7,
-	_reload_node = "weapons:smg_reload",
-	_speed = 650,
-	_range = 140,
-	_damage = 2,
-	_heals = 10,
-	_break_hits = 1,
-	_recoil = 0.75,
-	_spread_min = -4,
-	_spread_max = 4,
-	_tracer = "smg_alt",
-	_phys_alt = 0.65,
-	_is_alt = true,
-
-	on_place = function(itemstack, placer, pointed_thing)
-		return itemstack
-	end,
-	on_drop = function(itemstack, dropper, pointed_thing)
-		return itemstack
+function weapons.flag_on_hit(pointed, player, weapon, target_pos, dist)
+	if pointed.type == "object" then
+		if pointed.ref:is_player() then
+			weapons.handle_damage(weapon, player, pointed.ref, dist)
+		end
 	end
-},
-{
-	drawtype = "mesh",
-	mesh = "smg_reload_fp.b3d",
-	use_texture_alpha = true,
-	range = 1,
+end
 
-	_ammo_bg = "bullet_bg",
-	_kf_name = "SMG",
-	_damage = 8,
-	_mag = 65,
-	_tp_model = "smg_tp.x",
-	_reset_node = "weapons:smg",
-	_fov_mult = 0,
-	_type = "gun",
-	_ammo_type = "primary",
-	_phys_alt = 0.9,
-	
-	on_place = function(itemstack, placer, pointed_thing)
-		return itemstack
-	end,
-	on_drop = function(itemstack, dropper, pointed_thing)
-		return itemstack
+function weapons.place_block(player, weapon)
+	-- Ray calculations.
+	local raybegin = vector.add(player:get_pos(), {x=0, y=1.64, z=0})
+	local raymod = vector.multiply(player:get_look_dir(), weapon._range)
+	local rayend = vector.add(raybegin, raymod)
+	local ray = minetest.raycast(raybegin, rayend, true, false)
+	local pointed = ray:next()
+	pointed = ray:next()
+	local target_pos
+
+	local pname = player:get_player_name()
+	if pointed == nil then
+		if weapon._type == "block" then
+			weapons.player_list[pname].blocks =
+				weapons.player_list[pname].blocks + 1
+		end
+	else
+		-- Handle targets, refund if a player or entity;
+		if pointed.type == "object" then
+			target_pos = pointed.ref:get_pos()
+			weapons.player_list[pname].blocks =
+				weapons.player_list[pname].blocks + 1
+			return
+		else
+			target_pos = pointed.under
+		end
 	end
-},
-"smg.png", "medic_class")
 
-weapons.register_weapon("weapons:shotgun",
-{
-	drawtype = "mesh",
-	mesh = "shotgun_fp.b3d",
-	range = 1,
-
-	_ammo_bg = "shotgun_bg",
-	_ammo_type = "primary",
-	_kf_name = "Shotgun",
-	_alt_mode = "weapons:shotgun_alt",
-	_fov_mult = 0,
-	_crosshair = "shotgun_crosshair.png",
-	_type = "gun",
-	_firing_sound = "shotgun_fire",
-	_casing_sound = "shotgun_casing",
-	_reload_sound = "shotgun_reload",
-	_tp_model = "shotgun_tp.x",
-	_name = "shotgun",
-	_pellets = 16,
-	_mag = 2,
-	_rpm = 225,
-	_reload = 3.75,
-	_reload_node = "weapons:shotgun_reload",
-	_speed = 750,
-	_range = 150,
-	_damage = 7,
-	_break_hits = 1,
-	_recoil = 14,
-	_spread_min = -14,
-	_spread_max = 14,
-	_tracer = "shotgun",
-	_phys_alt = 1,
-
-	on_place = function(itemstack, placer, pointed_thing)
-		return itemstack
-	end,
-	on_drop = function(itemstack, dropper, pointed_thing)
-		return itemstack
+	-- Place blocks;
+	if target_pos == nil then
+	else
+		if pointed.type ~= "object" then
+			local block_pos = table.copy(pointed.above)
+			if pointed.intersection_normal.y < 1 then
+				-- Fixes placing on sides and below
+				block_pos.y = block_pos.y + 1
+			end
+			local check = minetest.get_node(block_pos).name
+			if check == "core:base_door" then
+				weapons.player_list[pname].blocks =
+					weapons.player_list[pname].blocks + 1
+				return
+			end
+			minetest.place_node(block_pos, 
+				{name="core:"..weapon._node.."_"
+					..weapons.player_list[pname].team.."_4"})
+		end
 	end
-},
-{
-	drawtype = "mesh",
-	mesh = "shotgun_alt_fp.b3d",
-	range = 1,
-
-	_ammo_bg = "shotgun_bg",
-	_ammo_type = "primary",
-	_kf_name = "Shotgun",
-	_alt_mode = "weapons:shotgun",
-	_fov_mult = 0.925,
-	_crosshair = "shotgun_crosshair.png",
-	_type = "gun",
-	_firing_sound = "shotgun_fire",
-	_casing_sound = "shotgun_casing",
-	_reload_sound = "shotgun_reload",
-	_tp_model = "shotgun_tp.x",
-	_name = "shotgun",
-	_pellets = 16,
-	_mag = 2,
-	_rpm = 225,
-	_reload = 3.75,
-	_reload_node = "weapons:shotgun_reload",
-	_speed = 750,
-	_range = 150,
-	_damage = 7,
-	_break_hits = 1,
-	_recoil = 10,
-	_spread_min = -11,
-	_spread_max = 11,
-	_tracer = "shotgun",
-	_phys_alt = 0.45,
-	_is_alt = true,
-
-	on_place = function(itemstack, placer, pointed_thing)
-		return itemstack
-	end,
-	on_drop = function(itemstack, dropper, pointed_thing)
-		return itemstack
-	end
-},
-{
-	drawtype = "mesh",
-	mesh = "shotgun_reload_fp.b3d",
-	use_texture_alpha = true,
-	range = 1,
-
-	_ammo_bg = "shotgun_bg",
-	_ammo_type = "primary",
-	_kf_name = "Shotgun",
-	_damage = 6,
-	_tp_model = "shotgun_tp.x",
-	_reset_node = "weapons:shotgun",
-	_mag = 2,
-	_fov_mult = 0,
-	_type = "gun",
-	_phys_alt = 0.7,
-	
-	on_place = function(itemstack, placer, pointed_thing)
-		return itemstack
-	end,
-	on_drop = function(itemstack, dropper, pointed_thing)
-		return itemstack
-	end
-},
-"shotgun.png", "scout_class")
-
-minetest.register_node(":core:team_neutral", {
-	tiles = {"core_neutral.png"},
-	range = 3,
-	node_placement_prediction = "",
-
-	_ammo_bg = "block_bg",
-	_ammo_type = "blocks",
-	_alt_mode = "core:slab_neutral",
-	_fov_mult = 0,
-	_crosshair = "railgun_crosshair.png",
-	_type = "block",
-	_node = "team",
-	_firing_sound = "block_place.ogg",
-	_casing_sound = "no_sound",
-	_reload_sound = "no_sound",
-	_tp_model = "cube.x",
-	_name = "block",
-	_pellets = 1,
-	--_mag = 50,
-	_rpm = 480,
-	_reload = 10,
-	_speed = 2000,
-	_range = 3,
-	_break_hits = 4,
-	_recoil = 0,
-	_spread_min = 0,
-	_spread_max = 0,
-	_has_tracer = false,
-	_phys_alt = 1,
-
-	on_place = function(itemstack, placer, pointed_thing)
-		return itemstack
-	end,
-
-	on_drop = function(itemstack, dropper, pointed_thing)
-		return itemstack
-	end
-	--sounds = weapons.sound_wood,
-})
-
-minetest.register_node(":core:lamp_neutral", {
-	tiles = {"core_neutral_lamp.png"},
-	range = 3,
-	node_placement_prediction = "",
-
-	_ammo_bg = "block_bg",
-	_ammo_type = "blocks",
-	_alt_mode = "core:team_neutral",
-	_fov_mult = 0,
-	_crosshair = "railgun_crosshair.png",
-	_node = "lamp",
-	_type = "block",
-	_firing_sound = "block_place.ogg",
-	_casing_sound = "no_sound",
-	_reload_sound = "no_sound",
-	_tp_model = "cube.x",
-	_name = "block",
-	_pellets = 1,
-	--_mag = 50,
-	_rpm = 480,
-	_reload = 10,
-	_speed = 2000,
-	_range = 3,
-	_break_hits = 4,
-	_recoil = 0,
-	_spread_min = 0,
-	_spread_max = 0,
-	_has_tracer = false,
-	_phys_alt = 1,
-
-	on_place = function(itemstack, placer, pointed_thing)
-		return itemstack
-	end,
-
-	on_drop = function(itemstack, dropper, pointed_thing)
-		return itemstack
-	end
-	--sounds = weapons.sound_wood,
-})
-
-minetest.register_node(":core:slab_neutral", {
-	tiles = {"core_neutral.png"},
-	range = 3,
-	paramtype = "light",
-	drawtype = "nodebox",
-	node_box = {
-		type = "fixed",
-		fixed = {
-			{-0.5, -0.5, -0.5, 0.5, 0, 0.5},
-		},
-	},
-	node_placement_prediction = "",
-
-	_ammo_bg = "block_bg",
-	_ammo_type = "blocks",
-	_alt_mode = "core:lamp_neutral",
-	_fov_mult = 0,
-	_crosshair = "railgun_crosshair.png",
-	_node = "slab",
-	_type = "block",
-	_firing_sound = "block_place.ogg",
-	_casing_sound = "no_sound",
-	_reload_sound = "no_sound",
-	_tp_model = "slab.x",
-	_name = "block",
-	_pellets = 1,
-	--_mag = 50,
-	_rpm = 480,
-	_reload = 10,
-	_speed = 2000,
-	_range = 3,
-	_break_hits = 4,
-	_recoil = 0,
-	_spread_min = 0,
-	_spread_max = 0,
-	_has_tracer = false,
-	_phys_alt = 1,
-
-	on_place = function(itemstack, placer, pointed_thing)
-		return itemstack
-	end,
-
-	on_drop = function(itemstack, dropper, pointed_thing)
-		return itemstack
-	end
-})
-
-minetest.register_node("weapons:pickaxe", {
-	tiles = {
-		"pickaxe.png",
-		"transparent.png",
-	},
-	drawtype = "mesh",
-	mesh = "pickaxe_fp.b3d",
-	range = 3,
-	node_placement_prediction = "",
-
-	_ammo_bg = "block_bg",
-	_ammo_type = "blocks",
-	_kf_name = "Pickaxe",
-	_alt_mode = "weapons:pickaxe_alt",
-	_fov_mult = 0,
-	_type = "tool",
-	_crosshair = "railgun_crosshair.png",
-	_firing_sound = "pickaxe_swing.ogg",
-	_name = "pickaxe",
-	_pellets = 1,
-	_damage = 75,
-	--_mag = 90,
-	_rpm = 50,
-	_reload = 0.01,
-	_speed = 2000,
-	_range = 3,
-	_break_hits = 2,
-	_recoil = 0,
-	_spread_min = 0,
-	_spread_max = 0,
-	_has_tracer = false,
-	_phys_alt = 1,
-
-	on_place = function(itemstack, placer, pointed_thing)
-		return itemstack
-	end,
-
-	on_drop = function(itemstack, dropper, pointed_thing)
-		return itemstack
-	end
-})
-
-minetest.register_node("weapons:pickaxe_alt", {
-	tiles = {
-		"pickaxe.png",
-		"transparent.png",
-	},
-	drawtype = "mesh",
-	mesh = "pickaxe_alt_fp.b3d",
-	range = 3,
-	node_placement_prediction = "",
-
-	_kf_name = "Entrenching Tool",
-	_alt_mode = "weapons:pickaxe",
-	_fov_mult = 0,
-	_type = "tool_alt",
-	_crosshair = "railgun_crosshair.png",
-	_firing_sound = "pickaxe_swing.ogg",
-	_tp_model = "pickaxe_alt.x",
-	_name = "pickaxe",
-	_pellets = 1,
-	--_mag = 90,
-	_damage = 75,
-	_rpm = 50,
-	_reload = 0.01,
-	_speed = 2000,
-	_range = 3,
-	_break_hits = 4,
-	_recoil = 0,
-	_spread_min = 0,
-	_spread_max = 0,
-	_has_tracer = false,
-	_phys_alt = 1,
-	_is_alt = true,
-
-	on_place = function(itemstack, placer, pointed_thing)
-		return itemstack
-	end,
-
-	on_drop = function(itemstack, dropper, pointed_thing)
-		return itemstack
-	end
-})
-
-minetest.register_node("weapons:flag_red", {
-	tiles = {
-		"flag_red.png",
-		"transparent.png"
-	},
-	drawtype = "mesh",
-	mesh = "flag_fp.b3d",
-	range = 0,
-	node_placement_prediction = "",
-	stack_max = 1,
-	
-	_ammo_bg = "flag_bg",
-	_kf_name = "motherfuckin' Red Flag",
-	_fov_mult = 0,
-	_type = "flag",
-	_crosshair = "railgun_crosshair.png",
-	_firing_sound = "flag_swing",
-	_tp_model = "flag_tp.x",
-	_name = "flag_red",
-	_pellets = 1,
-	--_mag = 90,
-	_damage = 55,
-	_rpm = 50,
-	_reload = 0.01,
-	_speed = 2000,
-	_range = 3,
-	_break_hits = 0,
-	_recoil = 0,
-	_spread_min = 0,
-	_spread_max = 0,
-	_has_tracer = 0,
-	_phys_alt = 0.75,
-
-	on_place = function(itemstack, placer, pointed_thing)
-		return itemstack
-	end,
-
-	on_drop = function(itemstack, dropper, pointed_thing)
-		return itemstack
-	end
-})
-
-minetest.register_node("weapons:flag_blue", {
-	tiles = {
-		"flag_blue.png",
-		"transparent.png"
-	},
-	drawtype = "mesh",
-	mesh = "flag_fp.b3d",
-	range = 0,
-	node_placement_prediction = "",
-	stack_max = 1,
-
-	_ammo_bg = "flag_bg",
-	_kf_name = "motherfuckin' Blue Flag",
-	_fov_mult = 0,
-	_type = "flag",
-	_crosshair = "railgun_crosshair.png",
-	_firing_sound = "flag_swing",
-	_tp_model = "flag_tp.x",
-	_name = "flag_red",
-	_pellets = 1,
-	--_mag = 90,
-	_damage = 75,
-	_rpm = 50,
-	_reload = 0.01,
-	_speed = 2000,
-	_range = 3,
-	_break_hits = 0,
-	_recoil = 0,
-	_spread_min = 0,
-	_spread_max = 0,
-	_has_tracer = 0,
-	_phys_alt = 0.75,
-
-	on_place = function(itemstack, placer, pointed_thing)
-		return itemstack
-	end,
-
-	on_drop = function(itemstack, dropper, pointed_thing)
-		return itemstack
-	end
-})
-
+end
