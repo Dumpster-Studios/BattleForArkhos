@@ -5,16 +5,11 @@
 local bounce_factor = 0.44
 
 local smoke_ent = {
-	visual = "cube",
+	visual = "sprite",
 	physical = false,
 	collide_with_objects = false,
 	is_visible = false,
 	textures = {
-		"core_stone.png",
-		"core_stone.png",
-		"core_stone.png",
-		"core_stone.png",
-		"core_stone.png",
 		"core_stone.png"
 	}
 }
@@ -91,10 +86,11 @@ local function register_grenade(name, class, killfeed_name, stats)
 
 	function ent_table:smoke_grenade(self)
 		local pos = self.object:get_pos()
-		local rot = self.object:get_rotation()
 		local pmin = vector.new(-0.05, -0.05, -0.05)
 		local pmax = vector.new(0.05, 0.05, 0.05)
+		minetest.log("warning", "before smoke ent")
 		self._invis_ent = minetest.add_entity(pos, "weapons:smoke_ent")
+		minetest.log("warning", "after smoke ent")
 		for i=1, 3 do
 			minetest.add_particlespawner({
 				attached = self._invis_ent,
@@ -117,10 +113,7 @@ local function register_grenade(name, class, killfeed_name, stats)
 				maxexptime = 8
 			})
 		end
-		-- ENGINE BUG PROCEED WITH CAUTION
-		-- Fixes rotating particle spawners due to set_rotation;
-		self._invis_ent:set_attach(self.object, "", vector.new(0,0,0), vector.new(0,0,0))
-		self._invis_ent:set_rotation(vector.new(-rot.x, -rot.y, -rot.z))
+		minetest.log("warning", "particle spawner?")
 	end
 
 	function ent_table:heal_grenade(self)
@@ -211,14 +204,19 @@ local function register_grenade(name, class, killfeed_name, stats)
 
 		if self._delay_started then
 			self._fuse_started = false
-			print("delay: ", self._delay_timer)
 			self._delay_timer = self._delay_timer + dtime
-			local rot = self.object:get_rotation()
+			
 			-- ENGINE BUG PROCEED WITH CAUTION
 			-- Fixes particle spawener being rotated!
-			self._invis_ent:set_rotation(vector.new(-rot.x, -rot.y, -rot.z))
+			--self._invis_ent:set_rotation(vector.new(-rot.x, -rot.y, -rot.z))
+			
+			minetest.log("warning", "before set_vel")
+			self._invis_ent:set_velocity(velocity)
+			minetest.log("warning", "after set_vel")
 			if self._delay_timer > self._delay_fuse then
+				minetest.log("warning", "before ent remove")
 				self._invis_ent:remove()
+				minetest.log("warning", "after ent remove")
 				self.object:remove()
 			end
 		end
