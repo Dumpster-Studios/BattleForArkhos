@@ -30,6 +30,7 @@ marksman.stats = {
 marksman.items = {
 	"weapons:railgun",
 	--"weapons:pistol",
+	"weapons:smoke_grenade",
 	"weapons:pickaxe",
 	"core:team_neutral",
 }
@@ -49,9 +50,9 @@ medic.stats = {
 }
 medic.items = {
 	"weapons:smg",
-	"weapons:pickaxe",
+	"weapons:heal_grenade",
 	--"weapons:injector",
-	--"weapons:resurrector",
+	"weapons:pickaxe",
 	"core:team_neutral",
 }
 medic.physics = {
@@ -391,7 +392,7 @@ minetest.register_chatcommand("respawn", {
 	description = "Respawn back to base if stuck.",
 	func = function(name, param)
 		local player = minetest.get_player_by_name(name)
-		weapons.respawn_player(player, false)
+		weapons.kill_player(player, player, {_kf_name="Suicide Pill"}, 0)
 	end,
 })
 

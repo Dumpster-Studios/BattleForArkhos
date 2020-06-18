@@ -4,6 +4,72 @@
 
 local bounce_factor = 0.44
 
+local smoke_ent = {
+	visual = "cube",
+	physical = false,
+	collide_with_objects = false,
+	is_visible = false,
+	textures = {
+		"core_stone.png",
+		"core_stone.png",
+		"core_stone.png",
+		"core_stone.png",
+		"core_stone.png",
+		"core_stone.png"
+	}
+}
+
+minetest.register_entity("weapons:smoke_ent", smoke_ent)
+
+local function explosion_tracers(pos)
+	for i=16,  math.random(30) do
+		local vector_mod = vector.new(
+								math.random(-100, 100)/100,
+								math.random(-100, 100)/100,
+								math.random(-100, 100)/100
+		)
+		if moveresult == nil then
+		elseif moveresult.touching_ground then
+			vector_mod.y = math.random(1, 100)/100
+		end			
+							
+		local rayend = vector.add(pos, vector_mod)
+		-- Tracers; performance heavy?
+		local tracer_vel = vector.multiply(vector.direction(pos, rayend), 45)
+		local xz, y = solarsail.util.functions.get_3d_angles(pos, rayend)
+		local ent = minetest.add_entity(vector.add(pos, vector.new(0, 0.16, 0)),
+			"weapons:tracer_shotgun")
+
+		ent:set_velocity(tracer_vel)
+		ent:set_rotation(vector.new(y, xz, 0))
+		ent:set_properties({collide_with_objects = false})
+	end
+end
+
+local function instant_smoke(pos)
+	for i=1, 3 do
+		minetest.add_particlespawner({
+			amount = math.random(6, 12),
+			time = 0.03,
+			texture = "rocket_smoke_" .. i .. ".png",
+			collisiondetection = false,
+			collision_removal = false,
+			object_collision = false,
+			vertical = false,
+			minpos = vector.new(pos.x,pos.y+0.05,pos.z),
+			maxpos = vector.new(pos.x,pos.y+0.05,pos.z),
+			minvel = vector.new(-2, 0.1, -2),
+			maxvel = vector.new(2, 1, 2),
+			minacc = vector.new(0,0,0),
+			maxacc = vector.new(0,0,0),
+			minsize = 20,
+			maxsize = 40,
+			minexptime = 2,
+			maxexptime = 4
+		})
+	end
+end
+
 local function register_grenade(name, class, killfeed_name, stats)
 	local ent_table = {
 		visual = "mesh",
@@ -15,22 +81,58 @@ local function register_grenade(name, class, killfeed_name, stats)
 		visual_size = {x=6, y=6},
 		collisionbox = {-0.15, -0.15, -0.15, 0.15, 0.15, 0.15},
 		_type = name,
-		_fuse_started = false,
-		_fuse = 20,
+		_fuse = stats._fuse,
 		_timer = 0,
 		_player_ref = nil,
+		_delay_timer = 0,
+		_delay_fuse = stats._delay,
+		_invis_ent = nil,
 	}
 
 	function ent_table:smoke_grenade(self)
-
+		local pos = self.object:get_pos()
+		local rot = self.object:get_rotation()
+		local pmin = vector.new(-0.05, -0.05, -0.05)
+		local pmax = vector.new(0.05, 0.05, 0.05)
+		self._invis_ent = minetest.add_entity(pos, "weapons:smoke_ent")
+		for i=1, 3 do
+			minetest.add_particlespawner({
+				attached = self._invis_ent,
+				amount = 45,
+				time = 0,
+				texture = "rocket_smoke_" .. i .. ".png",
+				collisiondetection = false,
+				collision_removal = false,
+				object_collision = false,
+				vertical = false,
+				minpos = pmin,
+				maxpos = pmax,
+				minvel = vector.new(-1, 1, -1),
+				maxvel = vector.new(1, 1, 1),
+				minacc = vector.new(0,0,0),
+				maxacc = vector.new(0,0,0),
+				minsize = 12,
+				maxsize = 20,
+				minexptime = 2,
+				maxexptime = 8
+			})
+		end
+		-- ENGINE BUG PROCEED WITH CAUTION
+		-- Fixes rotating particle spawners due to set_rotation;
+		self._invis_ent:set_attach(self.object, "", vector.new(0,0,0), vector.new(0,0,0))
+		self._invis_ent:set_rotation(vector.new(-rot.x, -rot.y, -rot.z))
 	end
 
 	function ent_table:heal_grenade(self)
-	
+		self.object:remove()
 	end
 
-	function ent_table:frag_grenade(self)
-		minetest.chat_send_all("this is a frag grenade")
+	function ent_table:frag_grenade(self, moveresult)
+		local pos = self.object:get_pos()
+		local grenade = minetest.registered_nodes["weapons:frag_grenade_red"]
+		
+		minetest.after(0.03, explosion_tracers, pos)
+		minetest.after(0.03, instant_smoke, pos)
 		self.object:remove()
 	end
 
@@ -82,7 +184,7 @@ local function register_grenade(name, class, killfeed_name, stats)
 			rot.y = xz + math.rad(0)
 
 			self.object:set_velocity(velocity)
-			if not self._fuse_started then
+			if self._fuse_started == nil then
 				self._fuse_started = true
 			end
 		end
@@ -93,15 +195,31 @@ local function register_grenade(name, class, killfeed_name, stats)
 		self.object:set_rotation(rot)
 
 		if self._fuse_started then
+			print("timer: ", self._timer)
 			self._timer = self._timer + dtime
 			if self._timer > self._fuse then
 				if self._type == "smoke" then
 					self:smoke_grenade(self)
+					self._delay_started = true
 				elseif self._type == "frag" then
-					self:frag_grenade(self)
+					self:frag_grenade(self, moveresult)
 				elseif self._type == "heal" then
 					self:heal_grenade(self)
 				end
+			end
+		end
+
+		if self._delay_started then
+			self._fuse_started = false
+			print("delay: ", self._delay_timer)
+			self._delay_timer = self._delay_timer + dtime
+			local rot = self.object:get_rotation()
+			-- ENGINE BUG PROCEED WITH CAUTION
+			-- Fixes particle spawener being rotated!
+			self._invis_ent:set_rotation(vector.new(-rot.x, -rot.y, -rot.z))
+			if self._delay_timer > self._delay_fuse then
+				self._invis_ent:remove()
+				self.object:remove()
 			end
 		end
 	end
@@ -118,10 +236,12 @@ local function register_grenade(name, class, killfeed_name, stats)
 		_mag = copy_stats._mag,
 		_reload = copy_stats._reload,
 		_damage = copy_stats._damage,
+		_radius = copy_stats._radius,
 		_name = name .. "_grenade",
+		_break_hits = 1,
 
 		drawtype = "mesh",
-		mesh = name .. "_grenade.b3d",
+		mesh = name .. "_grenade_fp.b3d",
 		tiles = {"grenade.png", class.."_class_red.png"},
 		range = 1,
 		node_placement_prediction = "",
@@ -145,12 +265,18 @@ local function register_grenade(name, class, killfeed_name, stats)
 		end
 	}
 
+	-- Healing Grenade only.
+	if copy_stats.heals == nil then
+	else
+		grenade_node._heals = copy_stats._heals
+	end
+
 	local grenade_reload = {
 		_reset_node = "weapons:"..name.."_grenade_red",
 		_kf_name = killfeed_name .. " Grenade",
 		
 		drawtype = "mesh",
-		mesh = "grenade_reload.b3d",
+		mesh = "grenade_reload_fp.b3d",
 		tiles = {class.."_class_red.png"},
 		range = 1,
 		node_placement_prediction = "",
@@ -158,6 +284,7 @@ local function register_grenade(name, class, killfeed_name, stats)
 		_ammo_bg = "grenade",
 		_fov_mult = 0,
 		_crosshair = "railgun_crosshair.png",
+		_ammo_bg = "grenade_bg",
 		_type = "grenade",
 		_ammo_type = "grenade",
 		_phys_alt = 1,
@@ -189,30 +316,6 @@ local function register_grenade(name, class, killfeed_name, stats)
 		local look_horizontal = player:get_look_horizontal()
 		ent:set_rotation(vector.new(-look_vertical, look_horizontal, 0))
 		ent:set_acceleration({x=0, y=-9.80, z=0})
-		if weapon._grenade_type == "frag" then
-			for i=1, 3 do
-				minetest.add_particlespawner({
-					attached = ent,
-					amount = 30,
-					time = 0,
-					texture = "rocket_smoke_" .. i .. ".png",
-					collisiondetection = true,
-					collision_removal = false,
-					object_collision = false,
-					vertical = false,
-					minpos = vector.new(-0.15,-0.15,-0.15),
-					maxpos = vector.new(0.15,0.15,0.15),
-					minvel = vector.new(-1, 0.1, -1),
-					maxvel = vector.new(1, 0.75, 1),
-					minacc = vector.new(0,0,0),
-					maxacc = vector.new(0,0,0),
-					minsize = 7,
-					maxsize = 12,
-					minexptime = 2,
-					maxexptime = 6
-				})
-			end
-		end
 	end
 
 	local gren_blue = table.copy(grenade_node)
@@ -230,4 +333,6 @@ local function register_grenade(name, class, killfeed_name, stats)
 	minetest.register_node("weapons:"..name.."_grenade_reload_blue", gren_blue_rel)
 end
 
-register_grenade("frag", "scout", "Frag", {_reload = 15, _mag = 3, _damage=35, _fuse=4})
+register_grenade("frag", "scout", "Frag", {_reload = 60, _mag = 3, _damage=35, _fuse=4, _radius=2.5})
+register_grenade("smoke", "sniper", "Smoke", {_reload = 60, _mag = 1, _damage=10, _fuse=1, _radius=1, _delay=12})
+register_grenade("heal", "medic", "Heal", {_reload = 60, _mag=2, _damage = 2, _fuse = 2, _radius=4, _heals=45})

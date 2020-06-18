@@ -117,27 +117,40 @@ function weapons.calc_block_damage(nodedef, weapon, target_pos, pointed)
 end
 
 function weapons.spray_particles(pointed, nodedef, target_pos)
-	local npos
+	local npos, npos_floor
 	if pointed == nil then
 		npos = table.copy(target_pos)
+		npos_floor = table.copy(target_pos)
+		npos_floor.x = math.floor(npos_floor.x)
+		npos_floor.y = math.floor(npos_floor.y)
+		npos_floor.z = math.floor(npos_floor.z)
 	else
 		npos = table.copy(pointed.intersection_point)
+		npos_floor = table.copy(pointed.under)
 	end
+	
 	if nodedef.tiles == nil then return end
-	for i=8, math.random(12, 16) do
-		minetest.add_particle({
-			pos = npos,
-			expirationtime = 2,
-			collisiondetection = true,	
-			collision_removal = false,
-			object_collision = false,
-			velocity = {x=math.random(-1, 1), y=0, z=math.random(-1, 1)},
-			acceleration = {x=0, y=-5, z=0},
-			texture = nodedef.tiles[1]
-			--node_tile = 0,
-			--node = {name=minetest.get_node(npos).name}
-		})
-	end
+	minetest.add_particlespawner({
+		amount = math.random(8, 12),
+		time = 0.03,
+		texture = nodedef.tiles[1],
+		node_tile = 0,
+		node = minetest.get_node(npos_floor).name,
+		collisiondetection = true,
+		collision_removal = false,
+		object_collision = false,
+		vertical = false,
+		minpos = vector.new(npos.x-0.05,npos.y-0.05,npos.z-0.05),
+		maxpos = vector.new(npos.x+0.05,npos.y+0.05,npos.z+0.05),
+		minvel = vector.new(-1, -1, -1),
+		maxvel = vector.new(1, 1, 1),
+		minacc = vector.new(0,-5,0),
+		maxacc = vector.new(0,-5,0),
+		minsize = 1,
+		maxsize = 1,
+		minexptime = 1,
+		maxexptime = 3
+	})
 end
 
 function weapons.update_killfeed(player, dead_player, weapon, dist)
