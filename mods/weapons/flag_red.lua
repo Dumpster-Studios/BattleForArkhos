@@ -78,9 +78,12 @@ function entity_flag_red:flag_captured(self, velocityy)
 	weapons.add_class_items(self._carried_by, weapons.player_list[pname].class)
 	self._carried_by = nil
 	minetest.chat_send_all(pname .. " has captured the Red Flag")
+	weapons.discord_send_message(pname .. " has captured the Red Flag")
 	weapons.score.blue = weapons.score.blue + 1
 	minetest.chat_send_all("Blue Team: " .. weapons.score.blue)
 	minetest.chat_send_all("Red Team: " .. weapons.score.red)
+	weapons.discord_send_message("```\nBlue Team: " .. weapons.score.blue.."\n"..
+								 "Red Team: " .. weapons.score.red .. "\n```")
 end
 
 function entity_flag_red:drop_flag(self, velocityy)

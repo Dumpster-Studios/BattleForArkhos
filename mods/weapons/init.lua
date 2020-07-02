@@ -7,6 +7,25 @@ worldedit = {}
 weapons.player = {}
 weapons.player_list = {}
 weapons.is_reloading = {}
+weapons.discord_loaded = minetest.get_modpath("discord")
+
+
+-- Handle prototype Discord intergration
+function weapons.discord_send_message(message)
+end
+if weapons.discord_loaded == nil then
+	local function send_discord_message(message)
+		return
+	end
+
+	weapons.discord_send_message = send_discord_message
+else
+	local function send_discord_message(message)
+		discord.send_message(message)
+	end
+	weapons.discord_send_message = send_discord_message
+end
+	
 
 local player_timers = {}
 local player_huds = {}
@@ -183,11 +202,15 @@ function weapons.update_killfeed(player, dead_player, weapon, dist)
 		"label[2,2;You" .. suicide_verbs[verb] .. "with the " .. weapon._kf_name
 		minetest.chat_send_all(pname .. suicide_verbs[verb] .. "with the " ..
 			weapon._kf_name .. ".")
+		weapons.discord_send_message("**" .. pname .. "**" .. suicide_verbs[verb] .. "with the "
+			.. weapon._kf_name .. ".")
 	else
 		verb = math.random(1, #kill_verbs)
 		form = death_formspec ..
 		"label[2,2;You " .. kill_verbs[verb] .. "by: "..pname.."]"
 		minetest.chat_send_all(pname .. kill_verbs[verb] .. tname .. " with the " .. weapon._kf_name
+		.. ", (" .. (math.floor(dist * figs + 0.5) / 100) .. "m)")
+		weapons.discord_send_message("**" .. pname .. "**" .. kill_verbs[verb] .. tname .. " with the " .. weapon._kf_name
 		.. ", (" .. (math.floor(dist * figs + 0.5) / 100) .. "m)")
 	end
 
@@ -333,62 +356,6 @@ function weapons.handle_damage(weapon, player, target_player, dist)
 		end
 	end
 	weapons.update_health(target_player)
-end
-
-local function wait(pointed, player, weapon, target_pos, dist)
-	if pointed.type == "object" then
-		local t_pos = pointed.ref:get_pos()
-		if t_pos == nil then return end
-		local diff = solarsail.util.functions.pos_to_dist(t_pos, target_pos)
-		if diff < 0.31 then
-			if pointed.ref:is_player() then
-				weapons.handle_damage(weapon, player, pointed.ref, dist)
-			end
-		end
-	else
-		for _, players in ipairs(minetest.get_connected_players()) do
-			if player:get_player_name() ~= players:get_player_name() then
-				local ppos = players:get_pos()
-				local splash_dist = solarsail.util.functions.pos_to_dist(ppos, pointed.intersection_point)
-				if splash_dist < 0.61 then
-					weapons.handle_damage(weapon, player, players, dist)
-					return
-				end
-			end
-		end
-
-		local nodedef = minetest.registered_nodes[minetest.get_node(target_pos).name]
-
-		if weapon._type == "gun" then
-			minetest.sound_play("block_impact", {pos=target_pos, 
-				max_hear_distance=8, gain=0.875}, true)
-		end
-
-		if nodedef == nil then
-		elseif nodedef._takes_damage == nil then
-			local damage, node = weapons.calc_block_damage(nodedef, weapon, target_pos, pointed)
-			minetest.set_node(target_pos, {name=node})
-			if damage < 1 then
-				if weapon._type == "tool" then
-					if weapons.player_list[player:get_player_name()].blocks <
-					weapons.player_list[player:get_player_name()].blocks_max then
-						weapons.player_list[player:get_player_name()].blocks =
-						weapons.player_list[player:get_player_name()].blocks + 1
-					end
-					
-				end
-				if weapon._type == "tool_alt" then
-					minetest.set_node({x=target_pos.x, y=target_pos.y-1, z=target_pos.z},
-					{name="air"})
-					weapons.spray_particles(nil, nodedef,
-						{x=target_pos.x, y=target_pos.y-1, z=target_pos.z})
-				end
-			end
-			minetest.check_for_falling(target_pos)
-		else
-			weapons.spray_particles(pointed, nodedef)
-		end
-	end
 end
 
 local health_pos = {x=0.325, y=0.825}

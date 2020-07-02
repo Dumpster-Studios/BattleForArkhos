@@ -2,7 +2,7 @@
 -- Author: Jordach
 -- License: Reserved
 
-local bounce_factor = 0.44
+local bounce_factor = 0.55
 
 local smoke_ent = {
 	visual = "sprite",
@@ -125,7 +125,6 @@ local function register_grenade(name, class, killfeed_name, stats)
 		minetest.after(0.03, explosion_tracers, pos)
 		minetest.after(0.03, instant_smoke, pos)
 
-
 		self.object:remove()
 	end
 
@@ -143,8 +142,8 @@ local function register_grenade(name, class, killfeed_name, stats)
 
 			-- Handle air resistance, friction:
 			if moveresult.touching_ground then
-				old_vel.x = old_vel.x * 0.6
-				old_vel.z = old_vel.z * 0.6
+				old_vel.x = old_vel.x * 0.75
+				old_vel.z = old_vel.z * 0.75
 			else
 				old_vel.x = old_vel.x * 0.975
 				old_vel.z = old_vel.z * 0.975

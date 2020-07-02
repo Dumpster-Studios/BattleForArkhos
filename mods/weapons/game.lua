@@ -39,7 +39,7 @@ function weapons.assign_team(player, team)
 										minetest.colorize(weapons.teams.red_string, weapons.team_names.red))
 				minetest.log("action", 
 					pname.. " has been automatically assigned to " .. weapons.team_names.red)
-				
+				weapons.discord_send_message("**" .. pname .. "**" .. " has joined the " .. weapons.team_names.red)
 			else
 				weapons.teams.blue = weapons.teams.blue + 1
 				weapons.player_list[pname].team = "blue"
@@ -48,6 +48,7 @@ function weapons.assign_team(player, team)
 										minetest.colorize(weapons.teams.blue_string, weapons.team_names.blue))
 				minetest.log("action", 
 					pname.. " has been automatically assigned to " .. weapons.team_names.blue)
+				weapons.discord_send_message("**" .. pname .. "**" .. " has joined the " .. weapons.team_names.blue)
 			end
 		elseif weapons.teams.red < weapons.teams.blue then
 			weapons.teams.red = weapons.teams.red + 1
@@ -57,6 +58,7 @@ function weapons.assign_team(player, team)
 										minetest.colorize(weapons.teams.red_string, weapons.team_names.red))
 			minetest.log("action", 
 				pname.. " has been automatically assigned to " .. weapons.team_names.red)
+			weapons.discord_send_message("**" .. pname .. "**" .. " has joined the " .. weapons.team_names.red)
 		elseif weapons.teams.red > weapons.teams.blue then
 			weapons.teams.blue = weapons.teams.blue + 1
 			weapons.player_list[pname].team = "blue"
@@ -65,6 +67,7 @@ function weapons.assign_team(player, team)
 										minetest.colorize(weapons.teams.blue_string, weapons.team_names.blue))
 			minetest.log("action", 
 				pname.. " has been automatically assigned to " .. weapons.team_names.blue)
+			weapons.discord_send_message("**" .. pname .. "**" .. " has joined the " .. weapons.team_names.blue)
 		end
 	elseif team == "blue" then
 		weapons.teams.blue = weapons.teams.blue + 1
@@ -74,6 +77,7 @@ function weapons.assign_team(player, team)
 										minetest.colorize(weapons.teams.blue_string, weapons.team_names.blue))
 		minetest.log("action", 
 			pname.. " has switched to " .. weapons.team_names.blue)
+		weapons.discord_send_message("**" .. pname .. "**" .. " has joined the " .. weapons.team_names.blue)
 	elseif team == "red" then
 		weapons.teams.red = weapons.teams.red + 1
 		weapons.player_list[pname].team = "red"
@@ -82,6 +86,7 @@ function weapons.assign_team(player, team)
 										minetest.colorize(weapons.teams.red_string, weapons.team_names.red))
 		minetest.log("action", 
 			pname.. " has switched to " .. weapons.team_names.red)
+		weapons.discord_send_message("**" .. pname .. "**" .. " has joined the " .. weapons.team_names.red)
 	end
 end
 
@@ -188,5 +193,10 @@ local function ctf_spawn_flags()
 	minetest.add_entity({x=redb, y=weapons.red_base_y+8.5, z=redb}, "weapons:flag_red")
 	minetest.add_entity({x=-blu2, y=weapons.blu_base_y+8.5, z=-blu2}, "weapons:flag_blue")
 end
+
+local map_seed = minetest.get_mapgen_setting("seed")
+local map_gen = minetest.get_mapgen_setting("mg_name")
+minetest.after(1, discord.send_message, "Starting game mode CTF on map seed: `" .. map_seed .. "` on map generator " .. 
+					map_gen:sub(1,1):upper()..map_gen:sub(2) .. ".")
 
 minetest.after(10, ctf_spawn_flags)
