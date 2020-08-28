@@ -5,17 +5,18 @@ function weapons.register_weapon(name, def, def_alt, def_reload, texture, class_
 	local node_alt = table.copy(def_alt)
 	local node_reload = table.copy(def_reload)
 	
-	node.tiles = {texture, class_name .. "_red.png"}
+
+	node.tiles = {{name=texture, backface_culling=true}, {name=class_name .. "_red.png", backface_culling=true}}
 	node._alt_mode = name .. "_alt_red"
 	node._reload_node = name .. "_reload_red"
 	node.node_placement_prediction = ""
 	
-	node_alt.tiles = {texture, class_name .. "_red.png"}
+	node_alt.tiles = {{name=texture, backface_culling=true}, {name=class_name .. "_red.png", backface_culling=true}}
 	node_alt._alt_mode = name .. "_red"
 	node_alt._reload_node = name .. "_reload_red"
 	node_alt.node_placement_prediction = ""
 	
-	node_reload.tiles = {texture, class_name .. "_red.png"}
+	node_reload.tiles = {{name=texture, backface_culling=true}, {name=class_name .. "_red.png", backface_culling=true}}
 	node_reload._reset_node = name .. "_red"
 	node_reload.node_placement_prediction = ""
 
@@ -29,17 +30,17 @@ function weapons.register_weapon(name, def, def_alt, def_reload, texture, class_
 	node_alt = table.copy(def_alt)
 	node_reload = table.copy(def_reload)
 	
-	node.tiles = {texture, class_name .. "_blue.png"}
+	node.tiles = {{name=texture, backface_culling=true}, {name=class_name .. "_blue.png", backface_culling=true}}
 	node._alt_mode = name .. "_alt_blue"
 	node._reload_node = name .. "_reload_blue"
 	node.node_placement_prediction = ""
 
-	node_alt.tiles = {texture, class_name .. "_blue.png"}
+	node_alt.tiles = {{name=texture, backface_culling=true}, {name=class_name .. "_blue.png", backface_culling=true}}
 	node_alt._alt_mode = name .. "_blue"
 	node_alt._reload_node = name .. "_reload_blue"
 	node_alt.node_placement_prediction = ""
 
-	node_reload.tiles = {texture, class_name .. "_blue.png"}
+	node_reload.tiles = {{name=texture, backface_culling=true}, {name=class_name .. "_blue.png", backface_culling=true}}
 	node_reload._reset_node = name .. "_blue"
 	node_alt.node_placement_prediction = ""
 	
@@ -50,6 +51,11 @@ end
 
 function weapons.raycast_bullet(player, weapon)
 	local pname = player:get_player_name()
+	
+	if weapon.on_fire_visual == nil then
+	else
+		weapon.on_fire_visual(player)
+	end
 
 	-- Handle recoil of the equipped weapon
 	solarsail.util.functions.apply_recoil(player, weapon)

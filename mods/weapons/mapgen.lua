@@ -15,7 +15,6 @@ local function generate_base_at(pos, area, area_max)
 			end
 		end
 	end
-	print(dump(pos))
 	minetest.place_schematic(pos, path..base, "0", nil, true)
 end
 

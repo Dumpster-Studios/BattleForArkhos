@@ -121,7 +121,15 @@ function weapons.calc_block_damage(nodedef, weapon, target_pos, pointed)
 		weapons.spray_particles(pointed, nodedef, target_pos)
 		return 0, "air", nil
 	elseif nodedef._takes_damage == nil then
-		local nodedamage = nodedef._health - weapon._break_hits
+		local nodedamage
+		if weapon._block_chance == nil then
+			nodedamage = nodedef._health - weapon._break_hits
+		elseif math.random(1, 100) < 25 then
+			nodedamage = nodedef._health - weapon._break_hits
+		else
+			nodedamage = nodedef._health
+		end
+
 		if nodedamage < 1 then
 			weapons.spray_particles(pointed, nodedef, target_pos)
 			return 0, "air", nil
@@ -153,8 +161,7 @@ function weapons.spray_particles(pointed, nodedef, target_pos)
 		amount = math.random(8, 12),
 		time = 0.03,
 		texture = nodedef.tiles[1],
-		node_tile = 0,
-		node = minetest.get_node(npos_floor).name,
+		node = {name=minetest.get_node(npos_floor).name},
 		collisiondetection = true,
 		collision_removal = false,
 		object_collision = false,
@@ -165,8 +172,8 @@ function weapons.spray_particles(pointed, nodedef, target_pos)
 		maxvel = vector.new(1, 1, 1),
 		minacc = vector.new(0,-5,0),
 		maxacc = vector.new(0,-5,0),
-		minsize = 1,
-		maxsize = 1,
+		minsize = 0.95,
+		maxsize = 1.15,
 		minexptime = 1,
 		maxexptime = 3
 	})
@@ -532,7 +539,9 @@ end
 
 local function finish_reload(player, weapon, new_wep, slot, wieldname)
 	local pname = player:get_player_name()
-	if weapons.is_reloading[pname][wieldname] then
+	if weapons.is_reloading[pname] == nil then
+		return
+	elseif weapons.is_reloading[pname][wieldname] then
 		weapons.is_reloading[pname][wieldname] = false
 		if weapons.player_list[pname] == nil then
 			return

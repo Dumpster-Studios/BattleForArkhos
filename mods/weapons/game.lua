@@ -196,7 +196,7 @@ end
 
 local map_seed = minetest.get_mapgen_setting("seed")
 local map_gen = minetest.get_mapgen_setting("mg_name")
-minetest.after(1, discord.send_message, "Starting game mode CTF on map seed: `" .. map_seed .. "` on map generator " .. 
+minetest.after(1, weapons.discord_send_message, "Starting game mode CTF on map seed: `" .. map_seed .. "` on map generator " .. 
 					map_gen:sub(1,1):upper()..map_gen:sub(2) .. ".")
 
 minetest.after(10, ctf_spawn_flags)

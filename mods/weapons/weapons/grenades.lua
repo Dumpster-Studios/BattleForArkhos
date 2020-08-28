@@ -187,7 +187,6 @@ local function register_grenade(name, class, killfeed_name, stats)
 		self.object:set_rotation(rot)
 
 		if self._fuse_started then
-			print("timer: ", self._timer)
 			self._timer = self._timer + dtime
 			if self._timer > self._fuse then
 				if self._type == "smoke" then

@@ -4,8 +4,8 @@
 
 local assault = {}
 assault.stats = {
-	hp = 200,
-	blocks = 50,
+	hp = 175,
+	blocks = 60,
 }
 assault.items = {
 	"weapons:assault_rifle",
@@ -14,7 +14,7 @@ assault.items = {
 	"core:team_neutral",
 }
 assault.physics = {
-	speed = 1.15,
+	speed = 1.25,
 	jump = 1,
 	gravity = 1,
 	sneak = true,
@@ -75,8 +75,8 @@ scout.items = {
 	"core:team_neutral",
 }
 scout.physics = {
-	speed = 1.55,
-	jump = 2,
+	speed = 1.8,
+	jump = 1.65,
 	gravity = 1,
 	sneak = true,
 	sneak_glitch = true,
@@ -105,9 +105,9 @@ weapons.blue_flag = blue_flag
 weapons.class_formspec =
 	"size[8,8]"..
 	"button[0,7;2,1;assault;Assault]"..
-	"button[2,7;2,1;marksman;Marksman]"..
+	--"button[2,7;2,1;marksman;Marksman]"..
 	"button[4,7;2,1;medic;Medic]"..
-	"button[6,7;2,1;scout;Scout]"..
+	--"button[6,7;2,1;scout;Scout]"..
 	"button[0,0;4,1;lefty;Left Shoulder View]"..
 	"button[4,0;4,1;righty;Right Shoulder View]"
 
@@ -500,7 +500,6 @@ animation_table.block = {}
 animation_table.block_place = {}
 
 minetest.register_globalstep(function(dtime)
-	--print("server step: " .. dtime)
 	for _, player in ipairs(minetest.get_connected_players()) do
 		local pname = player:get_player_name()
 		local wield = player:get_wielded_item():get_name()
@@ -521,16 +520,16 @@ minetest.register_globalstep(function(dtime)
 		end
 		if solarsail.controls.player[pname] == nil then
 		elseif solarsail.controls.player[pname].left then
-			if solarsail.controls.player[pname].up then
-				anim_group = "left"
-			else
+			if solarsail.controls.player[pname].down then
 				anim_group = "right"
+			else
+				anim_group = "left"
 			end
 		elseif solarsail.controls.player[pname].right then
-			if solarsail.controls.player[pname].up then
-				anim_group = "right"
-			else
+			if solarsail.controls.player[pname].down then
 				anim_group = "left"
+			else
+				anim_group = "right"
 			end
 		elseif solarsail.controls.player[pname].up then
 			anim_group = "up"

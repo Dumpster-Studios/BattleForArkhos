@@ -10,14 +10,9 @@ local function rocket_explode_damage_blocks(pos)
 			for z=-1, 1 do
 				local npos = {x=bpos.x+x, y=bpos.y+y, z=bpos.z+z}
 				local nodedef = table.copy(minetest.registered_nodes[minetest.get_node(npos).name])
-				if nodedef == nil then
-				elseif nodedef._takes_damage == nil then
-					weapon._break_hits = math.random(1, 4)
-					local damage, node, result = weapons.calc_block_damage(nodedef, weapon, npos)
-					if result == nil then
-						minetest.set_node(npos, {name=node})
-					end
-				end
+				weapon._break_hits = math.random(1, 4)
+				local damage, node, result = weapons.calc_block_damage(nodedef, weapon, npos)
+				minetest.set_node(npos, {name=node})
 			end
 		end
 	end
@@ -142,6 +137,10 @@ function rocket_ent:explode(self, moveresult)
 	local node = minetest.registered_nodes[minetest.get_node(pos).name]
 	local rocket = minetest.registered_nodes["weapons:rocket_launcher_red"]
 	local rocket_damage = table.copy(rocket)
+	if self._player_ref == nil then 
+		self.object:remove()
+		return
+	end
 	for _, player in ipairs(minetest.get_connected_players()) do
 		local ppos = player:get_pos()
 		local dist = solarsail.util.functions.pos_to_dist(pos, ppos)
@@ -191,8 +190,10 @@ end
 minetest.register_entity("weapons:rocket_ent", rocket_ent)
 
 local launcher_def_red = {
-	tiles = {"rocket_launcher.png", {name="assault_class_red.png", 
-										backface_culling=true}},
+	tiles = {
+		{name="rocket_launcher.png", backface_culling=false}, 
+		{name="assault_class_red.png", backface_culling=false}
+	},
 	drawtype = "mesh",
 	mesh = "rocket_launcher_fp.b3d",
 	use_texture_alpha = true,
@@ -211,8 +212,8 @@ local launcher_def_red = {
 	_name = "rocket_launcher",
 	_mag = 1,
 	_rpm = 80,
-	_reload = 3,
-	_damage = 65,
+	_reload = 15,
+	_damage = 45,
 	_recoil = 3,
 	_phys_alt = 1,
 	_break_hits = 2,
@@ -230,7 +231,7 @@ minetest.register_node("weapons:rocket_launcher_red", launcher_def_red)
 
 local launcher_def_blue = table.copy(launcher_def_red)
 launcher_def_blue.tiles = {"rocket_launcher.png", {name="assault_class_blue.png",
-													backface_culling=true}}
+													backface_culling=false}}
 launcher_def_blue._reload_node = "weapons:rocket_launcher_reload_blue"
 
 minetest.register_node("weapons:rocket_launcher_blue", launcher_def_blue)
