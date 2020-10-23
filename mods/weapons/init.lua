@@ -84,6 +84,7 @@ end
 function solarsail.util.functions.apply_recoil(player, weapon)
 	local yaw_rad = player:get_look_horizontal()
 	local pitch_rad = player:get_look_vertical()
+	-- Physical knockback; can be canceled out
 	local result_x, result_z = 
 			solarsail.util.functions.yaw_to_vec(yaw_rad, weapon._recoil, true)
 	local result_y = 
@@ -94,6 +95,23 @@ function solarsail.util.functions.apply_recoil(player, weapon)
 		y=result_y, 
 		z=result_z * pitch_mult
 	})
+	
+	-- Camera recoil; cannot be canceled out
+	local vert_deg, hori_deg, look_pitch, look_hori = 0
+	vert_deg = math.random(weapon._recoil_vert_min * 100, weapon._recoil_vert_max * 100) / 100
+	hori_deg = math.random(-weapon._recoil_hori * 100, weapon._recoil_hori * 100) / 100
+	
+	-- Handle aiming
+	local pname = player:get_player_name()
+	if weapons.player_list[pname].aim_mode then
+		look_pitch = player:get_look_vertical() + (math.rad(-vert_deg) * weapon._recoil_aim_factor)
+		look_hori = player:get_look_horizontal() + (math.rad(hori_deg) * weapon._recoil_aim_factor)
+	else
+		look_pitch = player:get_look_vertical() + (math.rad(-vert_deg) * weapon._recoil_factor)
+		look_hori = player:get_look_horizontal() + (math.rad(hori_deg) * weapon._recoil_factor)
+	end
+	player:set_look_vertical(look_pitch)
+	player:set_look_horizontal(look_hori)
 end
 
 function solarsail.util.functions.apply_explosion_recoil(player, multiplier, origin)
@@ -206,18 +224,18 @@ function weapons.update_killfeed(player, dead_player, weapon, dist)
 	if tname == pname then
 		verb = math.random(1, #suicide_verbs)
 		form = death_formspec ..
-		"label[2,2;You" .. suicide_verbs[verb] .. "with the " .. weapon._kf_name
+		"label[2,2;You" .. suicide_verbs[verb] .. "with the " .. weapon._localisation.name
 		minetest.chat_send_all(pname .. suicide_verbs[verb] .. "with the " ..
-			weapon._kf_name .. ".")
+			weapon._localisation.name .. ".")
 		weapons.discord_send_message("**" .. pname .. "**" .. suicide_verbs[verb] .. "with the "
-			.. weapon._kf_name .. ".")
+			.. weapon._localisation.name .. ".")
 	else
 		verb = math.random(1, #kill_verbs)
 		form = death_formspec ..
 		"label[2,2;You " .. kill_verbs[verb] .. "by: "..pname.."]"
-		minetest.chat_send_all(pname .. kill_verbs[verb] .. tname .. " with the " .. weapon._kf_name
+		minetest.chat_send_all(pname .. kill_verbs[verb] .. tname .. " with the " .. weapon._localisation.name
 		.. ", (" .. (math.floor(dist * figs + 0.5) / 100) .. "m)")
-		weapons.discord_send_message("**" .. pname .. "**" .. kill_verbs[verb] .. tname .. " with the " .. weapon._kf_name
+		weapons.discord_send_message("**" .. pname .. "**" .. kill_verbs[verb] .. tname .. " with the " .. weapon._localisation.name
 		.. ", (" .. (math.floor(dist * figs + 0.5) / 100) .. "m)")
 	end
 
@@ -270,10 +288,14 @@ function weapons.kill_player(player, target_player, weapon, dist)
 	minetest.after(5, weapons.reset_health, target_player)
 end
 
-
+function weapons.fix_hp_bg(player)
+	local pname = player:get_player_name()
+	player:hud_change(player_huds[pname].hp_bg, "text", "health_bg.png^[opacity:200")
+end
 
 function weapons.update_health(target_player)
 	local pname = target_player:get_player_name()
+	
 	if weapons.player_list[pname].hp < 10 then
 		target_player:hud_change(player_huds[pname].hp_1, "text", "0.png")
 		target_player:hud_change(player_huds[pname].hp_2, "text", "0.png")
@@ -537,7 +559,7 @@ function weapons.player.cancel_reload(player)
 	end
 end
 
-local function finish_reload(player, weapon, new_wep, slot, wieldname)
+local function finish_reload(player, weapon, wieldname)
 	local pname = player:get_player_name()
 	if weapons.is_reloading[pname] == nil then
 		return
@@ -547,12 +569,9 @@ local function finish_reload(player, weapon, new_wep, slot, wieldname)
 			return
 		end
 
-		local ammo = new_wep._ammo_type
+		local ammo = weapon._ammo_type
 		weapons.player_list[pname][ammo] =
 			weapons.player_list[pname][ammo.."_max"]
-		
-		local p_inv = player:get_inventory()
-		p_inv:set_stack("main", slot, ItemStack(new_wep._reset_node.." 1"))
 
 		-- Avoid sending HUD updates unless needed
 		if weapon._no_reload_hud then
@@ -582,8 +601,7 @@ local function reload_controls()
 							local p_inv = player:get_inventory()
 							local p_ind = player:get_wield_index()
 							local rel_node = minetest.registered_nodes[weapon._reload_node]
-							minetest.after(weapon._reload, finish_reload, player, weapon,
-								rel_node, p_ind, wield)
+							minetest.after(weapon._reload, finish_reload, player, weapon, wield)
 							minetest.sound_play({name=weapon._reload_sound},
 								{object=player, max_hear_distance=8, gain=0.15})
 							if weapon._no_reload_hud then
@@ -591,7 +609,6 @@ local function reload_controls()
 								player:hud_change(player_huds[player:get_player_name()].reloading, 
 									"text", "reloading.png")
 							end
-							p_inv:set_stack("main", p_ind, ItemStack(weapon._reload_node.." 1"))
 						end
 					end
 				end
@@ -602,7 +619,7 @@ local function reload_controls()
 end
 minetest.after(2, reload_controls)
 
-local function weapon_controls()
+local function weapon_use_controls()
 	for _, player in ipairs(minetest.get_connected_players()) do
 		player_timers[player:get_player_name()].fire =
 			player_timers[player:get_player_name()].fire + 0.03
@@ -637,9 +654,7 @@ local function weapon_controls()
 								end
 								minetest.sound_play({name=weapon._reload_sound},
 									{object=player, max_hear_distance=8, gain=0.15})
-								minetest.after(weapon._reload, finish_reload, player, weapon,
-									minetest.registered_nodes[weapon._reload_node], p_ind, wield)
-								p_inv:set_stack("main", p_ind, ItemStack(weapon._reload_node.." 1"))
+								minetest.after(weapon._reload, finish_reload, player, weapon, wield)
 							end
 						end
 					end
@@ -657,9 +672,9 @@ local function weapon_controls()
 			end
 		end
 	end
-	minetest.after(0.03, weapon_controls)
+	minetest.after(0.03, weapon_use_controls)
 end
-minetest.after(1, weapon_controls)
+minetest.after(1, weapon_use_controls)
 
 local function render_hud()
 	for _, player in ipairs(minetest.get_connected_players()) do
@@ -797,11 +812,12 @@ local function alternate_mode()
 
 		player_key_timer[pname] =
 			player_key_timer[pname] + 0.03
-
+		
 		if solarsail.controls.player[pname] == nil then
 		elseif weapon == nil then
+			weapons.player_list[pname].aim_mode = false
 		elseif weapon._type == nil then
-		elseif weapon._alt_mode == nil then
+			weapons.player_list[pname].aim_mode = false
 		-- Handle tools with the reload key as they lack reloads
 		elseif solarsail.controls.player[pname].aux1 then
 			if player_key_timer[pname] > 0.25 then
@@ -810,19 +826,16 @@ local function alternate_mode()
 					player:set_wielded_item(ItemStack(weapon._alt_mode .. " 1"))
 				end
 			end
-		-- Handle aiming down sights:
+			weapons.player_list[pname].aim_mode = false
+		-- Handle aiming down sights or alternate modes but not when reloading:
 		elseif weapon._type == "gun" then
-			if solarsail.controls.player[pname].RMB then
-				if weapon._is_alt then
-				else
-					player:set_wielded_item(ItemStack(weapon._alt_mode .. " 1"))
-				end
-				elseif not solarsail.controls.player[pname].RMB then
-				if weapon._is_alt then
-					player:set_wielded_item(ItemStack(weapon._alt_mode .. " 1"))
-				else
-				end
+			if not weapons.is_reloading[pname][wield] then
+				weapons.player_list[pname].aim_mode = solarsail.controls.player[pname].RMB
+			else
+				weapons.player_list[pname].aim_mode = false
 			end
+		else
+			weapons.player_list[pname].aim_mode = false
 		end
 	end
 	minetest.after(0.03, alternate_mode)
@@ -832,19 +845,35 @@ minetest.after(2, render_hud)
 
 local function handle_fov()
 	for _, player in ipairs(minetest.get_connected_players()) do
+		local pname = player:get_player_name()
 		local wield = player:get_wielded_item():get_name()
 		local weapon = minetest.registered_nodes[wield]
 		if weapon == nil then
-		elseif weapon._fov_mult == nil then
-			player:set_fov(0, false, 0.2)
-			player_fov[player:get_player_name()] = 0
-		elseif player_fov[player:get_player_name()] ~= weapon._fov_mult then
-			if weapon._fov_mult == 0 then
+		elseif weapons.player_list[pname].aim_mode then
+			if weapon._fov_mult_aim == nil then
 				player:set_fov(0, false, 0.2)
 				player_fov[player:get_player_name()] = 0
-			else
-				player:set_fov(weapon._fov_mult, true, 0.2)
-				player_fov[player:get_player_name()] = weapon._fov_mult
+			elseif player_fov[player:get_player_name()] ~= weapon._fov_mult_aim then
+				if weapon._fov_mult_aim == 0 then
+					player:set_fov(0, false, 0.2)
+					player_fov[player:get_player_name()] = 0
+				else
+					player:set_fov(weapon._fov_mult_aim, true, 0.2)
+					player_fov[player:get_player_name()] = weapon._fov_mult_aim
+				end
+			end
+		else
+			if weapon._fov_mult == nil then
+				player:set_fov(0, false, 0.2)
+				player_fov[player:get_player_name()] = 0
+			elseif player_fov[player:get_player_name()] ~= weapon._fov_mult then
+				if weapon._fov_mult == 0 then
+					player:set_fov(0, false, 0.2)
+					player_fov[player:get_player_name()] = 0
+				else
+					player:set_fov(weapon._fov_mult_aim, true, 0.2)
+					player_fov[player:get_player_name()] = weapon._fov_mult
+				end
 			end
 		end
 	end
@@ -880,7 +909,7 @@ local function handle_alt_physics()
 	end
 	minetest.after(0.03, handle_alt_physics)
 end
-handle_alt_physics()
+--handle_alt_physics()
 
 function core.spawn_item(pos, item)
 	return
@@ -890,42 +919,44 @@ end
 dofile(minetest.get_modpath("weapons").."/skybox.lua")
 dofile(minetest.get_modpath("weapons").."/builtin_blocks.lua")
 dofile(minetest.get_modpath("weapons").."/weapons.lua")
+
+-- Player viewmodel settings:
+dofile(minetest.get_modpath("weapons").."/arms/assault.lua")
+dofile(minetest.get_modpath("weapons").."/arms/player_body.lua")
+
 dofile(minetest.get_modpath("weapons").."/player.lua")
 dofile(minetest.get_modpath("weapons").."/game.lua")
 dofile(minetest.get_modpath("weapons").."/mapgen.lua")
 dofile(minetest.get_modpath("weapons").."/tracers.lua")
 
--- External weapons
-dofile(minetest.get_modpath("weapons").."/weapons/assault_rifle.lua")
-dofile(minetest.get_modpath("weapons").."/weapons/railgun.lua")
-dofile(minetest.get_modpath("weapons").."/weapons/smg.lua")
-dofile(minetest.get_modpath("weapons").."/weapons/shotgun.lua")
+-- Built in items
 dofile(minetest.get_modpath("weapons").."/weapons/tools.lua")
 dofile(minetest.get_modpath("weapons").."/weapons/blocks.lua")
-dofile(minetest.get_modpath("weapons").."/weapons/rocketry.lua")
-dofile(minetest.get_modpath("weapons").."/weapons/grenades.lua")
+-- External weapons
+dofile(minetest.get_modpath("weapons").."/weapons/assault_rifle.lua")
+--dofile(minetest.get_modpath("weapons").."/weapons/railgun.lua")
+--dofile(minetest.get_modpath("weapons").."/weapons/smg.lua")
+--dofile(minetest.get_modpath("weapons").."/weapons/shotgun.lua")
+--dofile(minetest.get_modpath("weapons").."/weapons/rocketry.lua")
+--dofile(minetest.get_modpath("weapons").."/weapons/grenades.lua")
 
-
+weapons.default_first_person_eyes = vector.new(0, 0, 2.25)
 minetest.register_on_player_receive_fields(
 			function(player, formname, fields)
-	if formname == "class_select" then
+	if formname == "camera_control" then
 		local pname = player:get_player_name()
 		if fields.lefty then
-			player:set_eye_offset({x=0,y=0,z=0}, {x=-15,y=-1,z=20})
+			player:set_eye_offset(weapons.default_first_person_eyes, {x=-15,y=-1,z=20})
 			minetest.chat_send_player(pname, "Third person camera and crosshair set to over the left shoulder.")
 			minetest.after(0.1, minetest.show_formspec,
-				player:get_player_name(), "class_select",
+				player:get_player_name(), "camera_control",
 				weapons.class_formspec)
 		elseif fields.righty then
-			player:set_eye_offset({x=0,y=0,z=0}, {x=15,y=-1,z=20})
+			player:set_eye_offset(weapons.default_first_person_eyes, {x=15,y=-1,z=20})
 			minetest.chat_send_player(pname, "Third person camera and crosshair set to over the right shoulder.")
 			minetest.after(0.1, minetest.show_formspec,
-				player:get_player_name(), "class_select",
+				player:get_player_name(), "camera_control",
 				weapons.class_formspec)
-		end
-		if weapons.player_list[pname].hp_bg == nil then
-			player:hud_change(player_huds[pname].hp_bg, "text", "health_bg.png^[opacity:200")
-			weapons.player_list[pname].hp_bg = true
 		end
 	end
 end)

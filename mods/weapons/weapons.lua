@@ -1,52 +1,28 @@
-function weapons.register_weapon(name, def, def_alt, def_reload, texture, class_name)
-	-- Red Team
-	
+function weapons.register_weapon(name, creator_allowed,def)
 	local node = table.copy(def)
-	local node_alt = table.copy(def_alt)
-	local node_reload = table.copy(def_reload)
-	
-
-	node.tiles = {{name=texture, backface_culling=true}, {name=class_name .. "_red.png", backface_culling=true}}
-	node._alt_mode = name .. "_alt_red"
-	node._reload_node = name .. "_reload_red"
 	node.node_placement_prediction = ""
-	
-	node_alt.tiles = {{name=texture, backface_culling=true}, {name=class_name .. "_red.png", backface_culling=true}}
-	node_alt._alt_mode = name .. "_red"
-	node_alt._reload_node = name .. "_reload_red"
-	node_alt.node_placement_prediction = ""
-	
-	node_reload.tiles = {{name=texture, backface_culling=true}, {name=class_name .. "_red.png", backface_culling=true}}
-	node_reload._reset_node = name .. "_red"
-	node_reload.node_placement_prediction = ""
+	minetest.register_node(name, node)
 
-	minetest.register_node(name .. "_red", node)
-	minetest.register_node(name .. "_alt_red", node_alt)
-	minetest.register_node(name .. "_reload_red", node_reload)
-
-	-- Blue Team
-
-	node = table.copy(def)
-	node_alt = table.copy(def_alt)
-	node_reload = table.copy(def_reload)
-	
-	node.tiles = {{name=texture, backface_culling=true}, {name=class_name .. "_blue.png", backface_culling=true}}
-	node._alt_mode = name .. "_alt_blue"
-	node._reload_node = name .. "_reload_blue"
-	node.node_placement_prediction = ""
-
-	node_alt.tiles = {{name=texture, backface_culling=true}, {name=class_name .. "_blue.png", backface_culling=true}}
-	node_alt._alt_mode = name .. "_blue"
-	node_alt._reload_node = name .. "_reload_blue"
-	node_alt.node_placement_prediction = ""
-
-	node_reload.tiles = {{name=texture, backface_culling=true}, {name=class_name .. "_blue.png", backface_culling=true}}
-	node_reload._reset_node = name .. "_blue"
-	node_alt.node_placement_prediction = ""
-	
-	minetest.register_node(name .. "_blue", node)
-	minetest.register_node(name .. "_alt_blue", node_alt)
-	minetest.register_node(name .. "_reload_blue", node_reload)
+	if creator_allowed then
+		if type(node._localisation) ~= "table" then
+			error([[Invalid weapon registry: ]]..name..[[._localisation needs to be a table.
+			]])
+		end
+		if node._slot == nil then
+			error([[
+				Invalid weapon registry: ]]..name..[[._slot does not exist.]])
+		elseif node._slot == "grenade" then
+			weapons.creator.register_weapon(node._localisation, node._slot)
+		elseif node._slot == "primary" then
+			weapons.creator.register_weapon(node._localisation, node._slot)
+		elseif node._slot == "secondary" then
+			weapons.creator.register_weapon(node._localisation, node._slot)
+		else
+			error([[
+				Invalid weapon registry: ]]..name..[[._slot needs to be one of the following:
+			"primary" "secondary" or "grenade".]])
+		end
+	end
 end
 
 function weapons.raycast_bullet(player, weapon)
@@ -57,20 +33,25 @@ function weapons.raycast_bullet(player, weapon)
 		weapon.on_fire_visual(player)
 	end
 
-	-- Handle recoil of the equipped weapon
-	solarsail.util.functions.apply_recoil(player, weapon)
-
 	for i=1, weapon._pellets do
 		-- Ray calculations.
 		local raybegin = vector.add(player:get_pos(), {x=0, y=1.64, z=0})
 		local raygunbegin = vector.add(player:get_pos(), {x=0, y=1.2, z=0})
+		local vec_x, vec_y, vec_z = 0
+
+		-- Handle aiming
+		if weapons.player_list[pname].aim_mode then
+			vec_x = math.random(-weapon._spread_aim * 100, weapon._spread_aim * 100) / 100
+			vec_y = math.random(-weapon._spread_aim * 100, weapon._spread_aim * 100) / 100
+			vec_z = math.random(-weapon._spread_aim * 100, weapon._spread_aim * 100) / 100
+		else
+			vec_x = math.random(-weapon._spread * 100, weapon._spread * 100) / 100
+			vec_y = math.random(-weapon._spread * 100, weapon._spread * 100) / 100
+			vec_z = math.random(-weapon._spread * 100, weapon._spread * 100) / 100
+		end
+		local aim_mod = {x=vec_x, y=vec_y, z=vec_z}
 		local raymod = vector.add(
-			vector.multiply(player:get_look_dir(), weapon._range), 
-			{
-				x=math.random(weapon._spread_min, weapon._spread_max),
-				y=math.random(weapon._spread_min, weapon._spread_max),
-				z=math.random(weapon._spread_min, weapon._spread_max)
-			}
+			vector.multiply(player:get_look_dir(), weapon._range), aim_mod
 		)
 		local rayend = vector.add(raybegin, raymod)
 		local ray = minetest.raycast(raybegin, rayend, true, false)
@@ -125,6 +106,8 @@ function weapons.raycast_bullet(player, weapon)
 				weapon, target_pos, dist)
 		end
 	end
+	-- Handle recoil of the equipped weapon
+	solarsail.util.functions.apply_recoil(player, weapon)
 end
 
 function weapons.bullet_on_hit(pointed, player, weapon, target_pos, dist)

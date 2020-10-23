@@ -101,37 +101,80 @@ local function add_extras(player)
 	ent:set_velocity(vector.add(pvel, vel))
 end
 
-weapons.register_weapon("weapons:assault_rifle",
-{ -- Default
-	drawtype = "mesh",
-	mesh = "assault_rifle_fp.b3d",
-	use_texture_alpha = true,
+weapons.register_weapon("weapons:assault_rifle", true,
+{	-- Minetest Node information:
+	drawtype = "airlike",
 	range = 1,
 
-	_ammo_bg = "bullet_bg",
-	_kf_name = "Assault Rifle",
-	_fov_mult = 0,
-	_crosshair = "assault_crosshair.png",
+	-- Config
 	_type = "gun",
-	_ammo_type = "primary",
-	_firing_sound = "ass_rifle_fire",
-	_casing_sound = "ass_rifle_casing",
-	_reload_sound = "ass_rifle_reload",
+	_ammo_type = "ass_rifle",
+	_slot = "primary",
+	_localisation = {
+		itemstring = "weapons:assault_rifle",
+		name = "Assault Rifle",
+		tooltip =
+[[A standard assault rifle. Good at short to medium range.
+
+Stats:
+
+25 Damage.
+2.65 second reload.
+Unaimed spread +- 7 nodes at maximum range.
+Aimed spread +- 0.5 nodes at maximum range.
+Range 150 nodes.]],
+	},
+
+	-- HUD / Visual
+	_tracer = "ar",
 	_name = "assault_rifle",
+	_ammo_bg = "bullet_bg",
+	_crosshair = "assault_crosshair.png",
+	_crosshair_aim = "railgun_crosshair.png",
+	_fov_mult = 0,
+	_fov_mult_aim = 0.6,
+	_arms_texture = "assault_rifle.png",
+	_min_arm_angle = -45,
+	_max_arm_angle = 75,
+	_arm_angle_offset = 0,
+	-- Sounds
+	_firing_sound = "ass_rifle_fire",
+	_reload_sound = "ass_rifle_reload",
+	
+	-- Base Stats:
 	_pellets = 1,
 	_mag = 30,
 	_rpm = 500,
-	_reload = 3,
-	_speed = 1200, -- Meters per second
+	_reload = 2.65,
+	_speed = 1200,
 	_range = 150,
-	_damage = 10,
-	_break_hits = 1,
+	_damage = 25,
+	_speed = 1200,
+	_movespeed = 0.95,
+	_movespeed_aim = 0.45,
+
 	_recoil = 2.5,
-	_spread_min = -4,
-	_spread_max = 4,
-	_tracer = "ar",
-	_phys_alt = 1,
-	_block_chance = 85,
+	_recoil_vert_min = 1,
+	_recoil_vert_max = 2.25,
+	_recoil_hori = 3,
+	_recoil_factor = 0.8,
+	_recoil_aim_factor = 0.5,
+	
+	_spread = 7,
+	_spread_aim = 1.25,
+
+	_break_hits = 2,
+	_block_chance = 50,
+
+	-- Arm Animations; incomplete
+	_anim = {
+		idle = {x=0, y=0},
+		idle_fire = {x=0, y=8},
+		aim = {x=10, y=10},
+		aim_fire = {x=10, y=18},
+		reload = {x=60, y=219}
+	},
+	_casing = "Armature_Casing",
 
 	on_fire = weapons.raycast_bullet,
 	on_fire_visual = add_extras,
@@ -142,68 +185,4 @@ weapons.register_weapon("weapons:assault_rifle",
 	on_drop = function(itemstack, dropper, pointed_thing)
 		return itemstack
 	end
-}, 
-{ -- Alt
-	drawtype = "mesh",
-	mesh = "assault_rifle_alt_fp.b3d",
-	use_texture_alpha = true,
-	range = 1,
-
-	_ammo_bg = "bullet_bg",
-	_kf_name = "Assault Rifle",
-	_fov_mult = 0.6,
-	_crosshair = "railgun_crosshair.png",
-	_type = "gun",
-	_ammo_type = "primary",
-	_firing_sound = "ass_rifle_fire",
-	_casing_sound = "ass_rifle_casing", 
-	_reload_sound = "ass_rifle_reload",
-	_name = "assault_rifle",
-	_pellets = 1,
-	_mag = 30,
-	_rpm = 125,
-	_reload = 3,
-	_speed = 1500, -- Meters per second
-	_range = 150,
-	_damage = 20,
-	_break_hits = 3,
-	_recoil = 1.5,
-	_spread_min = 0,
-	_spread_max = 0,
-	_tracer = "ar",
-	_phys_alt = 0.45,
-	_is_alt = true,
-
-	on_fire = weapons.raycast_bullet,
-	on_fire_visual = add_extras,
-	bullet_on_hit = weapons.bullet_on_hit,
-	on_place = function(itemstack, placer, pointed_thing)
-		return itemstack
-	end,
-	on_drop = function(itemstack, dropper, pointed_thing)
-		return itemstack
-	end
-},
-{ -- Reloading
-	--tiles = {"assault_rifle.png", "assault_class_blue.png"},
-	drawtype = "mesh",
-	mesh = "assault_rifle_reload_fp.b3d",
-	use_texture_alpha = true,
-	range = 1,
-
-	_ammo_bg = "bullet_bg",
-	_kf_name = "Assault Rifle",
-	_damage = 10,
-	_mag = 30,
-	_fov_mult = 0,
-	_type = "gun",
-	_ammo_type = "primary",
-	_phys_alt = 0.75,
-
-	on_place = function(itemstack, placer, pointed_thing)
-		return itemstack
-	end,
-	on_drop = function(itemstack, dropper, pointed_thing)
-		return itemstack
-	end
-}, "assault_rifle.png", "assault_class")
+})

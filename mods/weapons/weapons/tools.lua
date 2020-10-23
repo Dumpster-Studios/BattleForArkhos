@@ -141,7 +141,7 @@ minetest.register_node("weapons:flag_blue", {
 	_crosshair = "railgun_crosshair.png",
 	_firing_sound = "flag_swing",
 	_tp_model = "flag_tp.x",
-	_name = "flag_red",
+	_name = "flag_blue",
 	_damage = 75,
 	_rpm = 50,
 	_reload = 0.01,
