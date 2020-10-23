@@ -324,12 +324,12 @@ end)
 
 -- cache bone positions for speed
 local head_rot  = -90
-local head_body = vector.new(0,-4.5,-12.5)
-local body_pos  = vector.new(0,4.5,-4.25)
-local body_rot  = vector.new(0,0,0)
-local legs_pos  = vector.new(0,6,-4.25)
-local legs_rot  = vector.new(180,0,0)
-local arms_pos  = vector.new(0,9,-4.25)
+local head_body = vector.new(0,0,0)
+local body_pos  = vector.new(0,0,0)
+local body_rot  = vector.new(-90,0,180)
+local legs_pos  = vector.new(0,0,-6)
+local legs_rot  = vector.new(90,0,180)
+local arms_pos  = vector.new(0,0,0)
 local arms_rot  = vector.new(0,0,0)
 local nulvec    = vector.new(0,0,0)
 
@@ -351,7 +351,7 @@ function weapons.player.set_class(player, class)
 	local plb_lae = weapons.player_body[pname]:get_luaentity()
 	plb_lae._player_ref = player
 	weapons.player_body[pname]:set_properties({textures = {"assault_class_" .. weapons.player_list[pname].team .. ".png"}})
-	weapons.player_body[pname]:set_attach(player, "Armature_Root",  nul_vec, nul_vec, true)
+	weapons.player_body[pname]:set_attach(player, "",  nul_vec, nul_vec, true)
 	weapons.player_body[pname]:set_bone_position("Armature_Root", body_pos, body_rot)
 	weapons.player_body[pname]:set_bone_position("Armature_Legs", legs_pos, legs_rot)
 
@@ -360,7 +360,7 @@ function weapons.player.set_class(player, class)
 	local pla_lae = weapons.player_arms[pname]:get_luaentity()
 	pla_lae._player_ref = player
 	weapons.player_arms[pname]:set_properties({textures = {"assault_class_" .. weapons.player_list[pname].team .. ".png", pla_lae._texture}})
-	weapons.player_arms[pname]:set_attach(player, "Armature_Root", nulvec, nulvec, true)
+	weapons.player_arms[pname]:set_attach(player, "", nulvec, nulvec, true)
 	weapons.player_arms[pname]:set_bone_position("Armature_Root", arms_pos, arms_rot)
 
 	weapons.respawn_player(player, false)
@@ -443,8 +443,8 @@ minetest.register_globalstep(function(dtime)
 			local frame_offset = 0
 			local anim_group
 			if look_pitch[pname] ~= ppitch then
-				player:set_bone_position("Armature_Head", head_body, {x = ppitch + head_rot, y = 0, z = 0})
-				look_pitch[pname] = ppitch
+				player:set_animation({x=ppitch+90, y=ppitch+90}, 1, 0.03, false)
+				look_pitch[pname] = ppitch+0 -- Do not alias
 				if weapon == nil then
 				elseif weapon._max_arm_angle == nil then
 				else
@@ -469,15 +469,15 @@ minetest.register_globalstep(function(dtime)
 			if solarsail.controls.player[pname] == nil then
 			elseif solarsail.controls.player[pname].left then
 				if solarsail.controls.player[pname].down then
-					anim_group = "right"
-				else
 					anim_group = "left"
+				else
+					anim_group = "right"
 				end
 			elseif solarsail.controls.player[pname].right then
 				if solarsail.controls.player[pname].down then
-					anim_group = "left"
-				else
 					anim_group = "right"
+				else
+					anim_group = "left"
 				end
 			elseif solarsail.controls.player[pname].up then
 				anim_group = "up"
@@ -504,7 +504,6 @@ minetest.register_globalstep(function(dtime)
 
 				-- Prevent re-sending packets to clients with the exact frames again.
 				if last_anim[pname].x ~= result_frames.x then
-					player:set_animation(result_frames, 60, 0.1, true)
 					if weapons.player_body[pname] ~= nil then
 						weapons.player_body[pname]:set_animation(result_frames, 60, 0.1, true)
 					end
