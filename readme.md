@@ -1,4 +1,4 @@
-# SolarSail / "a class based FPS"
+# SolarSail FPS
 ### A framework for making RPG games, and also other games.
 
 ## Hol Up:
@@ -16,7 +16,7 @@ Seriously, this just contains a game for the SolarSail engine; with some inheren
 
 `D` Sidestep right.
 
-`1..9 or Mouse Wheel` Select weapon from active list.
+`1..9 or Mouse Wheel` Select weapon or tool from the active list.
 
 `E` Reload active weapon, or change active tool mode.
 
@@ -30,9 +30,10 @@ Seriously, this just contains a game for the SolarSail engine; with some inheren
 
 `Space` Jump. You surely knew this, right?
 
+Tablet / Phone users: good luck.
 
 ## How to Play:
-A dev server, coming soooooon.
+On the experimental development server. Coming soon. Ish.
 
 ## Badges of ~~dis~~Honour:
 ![lines of code](https://img.shields.io/tokei/lines/github/jordach/SolarSail?label=lines%20of%20code%20%28including%203d%20models%29)

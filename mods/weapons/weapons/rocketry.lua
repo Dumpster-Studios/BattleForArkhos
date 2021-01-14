@@ -23,7 +23,7 @@ local function launch_rocket(player, weapon)
 	solarsail.util.functions.apply_recoil(player, weapon)
 
 	local rocket_pos = vector.add(
-		vector.add(player:get_pos(), vector.new(0, 1.64, 0)), 
+		vector.add(player:get_pos(), vector.new(0, weapons.default_eye_height, 0)), 
 			vector.multiply(player:get_look_dir(), 1)
 	)
 

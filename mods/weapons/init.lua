@@ -2,38 +2,123 @@
 -- Author: Jordach
 -- License: Reserved
 
+-- global stuff.
+
 weapons = {}
 worldedit = {}
 weapons.player = {}
 weapons.player_list = {}
+weapons.player_data = {}
 weapons.is_reloading = {}
-weapons.discord_loaded = minetest.get_modpath("discord")
+weapons.default_eye_height = 1.58	
+weapons.status = {}
 
+-- uptime counting
 
--- Handle prototype Discord intergration
-function weapons.discord_send_message(message)
-end
-if weapons.discord_loaded == nil then
-	local function send_discord_message(message)
-		return
+function conv_to_hms(seconds)
+	local seconds = tonumber(seconds)
+	if seconds <= 0 then
+		return "00h00m00s";
+	else
+		local hours = string.format("%02.f", math.floor(seconds/3600))
+		local mins = string.format("%02.f", math.floor(seconds/60 - (hours*60)))
+		local secs = string.format("%02.f", math.floor(seconds - hours*3600 - mins *60))
+		return hours.."h"..mins.."m"..secs.."s"
 	end
-
-	weapons.discord_send_message = send_discord_message
-else
-	local function send_discord_message(message)
-		discord.send_message(message)
-	end
-	weapons.discord_send_message = send_discord_message
 end
+
+weapons.status.uptime = 0
+local function uptime_count()
+	weapons.status.uptime = weapons.status.uptime + 1
+	minetest.after(1, uptime_count)
+end
+minetest.after(1, uptime_count)
+
+-- Minetest Engine overrides:
+
+function core.spawn_item(pos, item)
+	return
+end
+
+function core.send_join_message(player_name)
+	if not core.is_singleplayer() then
+		local loaded, wpd, file_created = persistence.load_data("weapons_player_data", true)
+		weapons.player_data = table.copy(wpd)
+		wpd = nil
 	
+		if weapons.player_data[player_name] == nil then
+			-- Create userdata if it doesn't exist, otherwise we do so
+			weapons.player_data[player_name] = {}
+			weapons.player_data[player_name].nick = player_name
+			minetest.log("action", "No user settings for user: " .. player_name .. 
+				", detected; creating it now.")
+			persistence.save_data("weapons_player_data", weapons.player_data)
+		end
+	
+		core.chat_send_all(weapons.team_colourize(minetest.get_player_by_name(player_name), weapons.player_data[player_name].nick) .. " joined the game.")
+	end
+end
+
+function core.send_leave_message(player_name, timed_out)
+	local msg = weapons.team_colourize(minetest.get_player_by_name(player_name), weapons.player_data[player_name].nick) .. " left the game"
+	if timed_out then
+		msg = msg .. ", due to network error."
+	else
+		msg = msg .. "."
+	end
+	minetest.chat_send_all(msg)
+end
+
+function core.get_server_status(player_name, joined)
+	local status = "Server Version: Minetest " .. minetest.get_version().string .. ".\n"
+	status = status .. "Server Uptime: " .. conv_to_hms(weapons.status.uptime) .. ".\n"
+
+	status = status .. "Connected Players: "
+	local nplayers = {}
+	local count = 0
+	for _, player in ipairs(minetest.get_connected_players()) do
+		local pname = player:get_player_name()
+		count = count + 1
+		nplayers[count] = {}
+		if weapons.player_data[pname] == nil then
+			nplayers[count].nick = pname
+		elseif weapons.player_data[pname].nick == nil then
+			nplayers[count].nick = pname
+		else	
+			nplayers[count].nick = weapons.player_data[player:get_player_name()].nick
+		end
+		nplayers[count].user = player
+	end
+	for num, nick in ipairs(nplayers) do
+		if num < #nplayers then
+			status = status .. weapons.team_colourize(nplayers[num].user, nplayers[num].nick) .. ", "
+		else
+			status = status .. weapons.team_colourize(nplayers[num].user, nplayers[num].nick) .. "."
+		end
+	end
+	return status
+end
+
+-- Main game stuff begins.
 
 local player_timers = {}
-local player_huds = {}
+weapons.player_huds = {}
 local player_fov = {}
 
 local death_formspec = 
 	"size[6,3]"..
 	"label[2,1;Respawning in 5 seconds...]"
+
+function weapons.get_nick(player)
+	local pname = player:get_player_name()
+	if weapons.player_data[pname] == nil then
+		return pname
+	elseif weapons.player_data[pname].nick == nil then
+		return pname
+	else
+		return weapons.player_data[pname].nick
+	end
+end
 
 minetest.register_on_player_receive_fields(function(player, 
 		formname, fields)
@@ -90,7 +175,7 @@ function solarsail.util.functions.apply_recoil(player, weapon)
 	local result_y = 
 			solarsail.util.functions.y_direction(pitch_rad, weapon._recoil)
 	local pitch_mult = solarsail.util.functions.xz_amount(pitch_rad)
-	player:add_player_velocity({
+	player:add_velocity({
 		x=result_x * pitch_mult, 
 		y=result_y, 
 		z=result_z * pitch_mult
@@ -118,7 +203,7 @@ function solarsail.util.functions.apply_explosion_recoil(player, multiplier, ori
 	local ppos = player:get_pos()
 	ppos.y = ppos.y + 0.5
 	local result_vel = vector.multiply(vector.direction(origin, ppos), multiplier)
-	player:add_player_velocity(result_vel)
+	player:add_velocity(result_vel)
 end
 
 function solarsail.util.functions.pos_to_dist(pos_1, pos_2)
@@ -215,7 +300,8 @@ function weapons.update_killfeed(player, dead_player, weapon, dist)
 	}
 	local special_verbs = { "'s Ankha killed " }
 	local suicide_verbs = {
-		" commited die ", " died ", " commited suicide ", " couldn't stand living "
+		" commited die ", " died ", " commited suicide ", " couldn't stand living ",
+		" hated everything ", " realised existence was pointless ", " gave up on their team "
 	}
 
 	local verb, form
@@ -225,17 +311,17 @@ function weapons.update_killfeed(player, dead_player, weapon, dist)
 		verb = math.random(1, #suicide_verbs)
 		form = death_formspec ..
 		"label[2,2;You" .. suicide_verbs[verb] .. "with the " .. weapon._localisation.name
-		minetest.chat_send_all(pname .. suicide_verbs[verb] .. "with the " ..
+		minetest.chat_send_all(weapons.get_nick(player) .. suicide_verbs[verb] .. "with the " ..
 			weapon._localisation.name .. ".")
-		weapons.discord_send_message("**" .. pname .. "**" .. suicide_verbs[verb] .. "with the "
+		weapons.discord_send_message("**" .. weapons.get_nick(player) .. "**" .. suicide_verbs[verb] .. "with the "
 			.. weapon._localisation.name .. ".")
 	else
 		verb = math.random(1, #kill_verbs)
 		form = death_formspec ..
 		"label[2,2;You " .. kill_verbs[verb] .. "by: "..pname.."]"
-		minetest.chat_send_all(pname .. kill_verbs[verb] .. tname .. " with the " .. weapon._localisation.name
+		minetest.chat_send_all(weapons.get_nick(player) .. kill_verbs[verb] .. weapons.get_nick(dead_player) .. " with the " .. weapon._localisation.name
 		.. ", (" .. (math.floor(dist * figs + 0.5) / 100) .. "m)")
-		weapons.discord_send_message("**" .. pname .. "**" .. kill_verbs[verb] .. tname .. " with the " .. weapon._localisation.name
+		weapons.discord_send_message("**" .. weapons.get_nick(player) .. "**" .. kill_verbs[verb] .. weapons.get_nick(dead_player) .. " with the " .. weapon._localisation.name
 		.. ", (" .. (math.floor(dist * figs + 0.5) / 100) .. "m)")
 	end
 
@@ -245,8 +331,8 @@ end
 function weapons.reset_health(player)
 	local pname = player:get_player_name()
 	weapons.player_list[pname].hp = weapons.player_list[pname].hp_max
+	weapons.hud.update_vignette(player)
 	minetest.close_formspec(pname, "death")
-	weapons.update_health(player)
 end
 
 function weapons.respawn_player(player, respawn)
@@ -266,66 +352,21 @@ function weapons.respawn_player(player, respawn)
 	end
 
 	player:set_pos({x=x, y=y+0.5, z=z})
-	player:set_properties({
-		eye_height = 1.64
-	})
 	if respawn then
 		weapons.set_ammo(player, weapons.player_list[pname].class)
 		weapons.clear_inv(player)
 		weapons.add_class_items(player, weapons.player_list[pname].class)
 	end
+	weapons.hud.remove_blackout(player)
 end
 
 function weapons.kill_player(player, target_player, weapon, dist)
-	local tname = target_player:get_player_name()
-	local pname = player:get_player_name()
 	weapons.update_killfeed(player, target_player, weapon, dist)
-	target_player:set_properties({
-		eye_height = 0.35
-	})
+	weapons.player_list[target_player:get_player_name()].hp = 0
 	weapons.player.cancel_reload(target_player)
+	weapons.hud.blackout(target_player)
 	minetest.after(4.9, weapons.respawn_player, target_player, true)
 	minetest.after(5, weapons.reset_health, target_player)
-end
-
-function weapons.fix_hp_bg(player)
-	local pname = player:get_player_name()
-	player:hud_change(player_huds[pname].hp_bg, "text", "health_bg.png^[opacity:200")
-end
-
-function weapons.update_health(target_player)
-	local pname = target_player:get_player_name()
-	
-	if weapons.player_list[pname].hp < 10 then
-		target_player:hud_change(player_huds[pname].hp_1, "text", "0.png")
-		target_player:hud_change(player_huds[pname].hp_2, "text", "0.png")
-		target_player:hud_change(player_huds[pname].hp_3, "text",
-			tostring(weapons.player_list[pname].hp):sub(1,1) .. ".png")
-	elseif weapons.player_list[pname].hp < 100 then
-		target_player:hud_change(player_huds[pname].hp_1, "text", "0.png")
-		target_player:hud_change(player_huds[pname].hp_2, "text", 
-			tostring(weapons.player_list[pname].hp):sub(1,1) .. ".png")
-		target_player:hud_change(player_huds[pname].hp_3, "text",
-			tostring(weapons.player_list[pname].hp):sub(2,2) .. ".png")
-	elseif weapons.player_list[pname].hp > 99 then
-		target_player:hud_change(player_huds[pname].hp_1, "text",
-			tostring(weapons.player_list[pname].hp):sub(1,1) .. ".png")
-		target_player:hud_change(player_huds[pname].hp_2, "text", 
-			tostring(weapons.player_list[pname].hp):sub(2,2) .. ".png")
-		target_player:hud_change(player_huds[pname].hp_3, "text",
-			tostring(weapons.player_list[pname].hp):sub(3,3) .. ".png")
-	end
-end
-
-local function hide_hitmarker(player)
-	player:hud_change(player_huds[player:get_player_name()].hitmarker, "text",
-		"transparent.png")
-end
-
-local function render_hitmarker(player)
-	player:hud_change(player_huds[player:get_player_name()].hitmarker, "text",
-		"hitmarker.png")
-	minetest.after(0.45, hide_hitmarker, player)
 end
 
 function weapons.handle_damage(weapon, player, target_player, dist)
@@ -334,6 +375,10 @@ function weapons.handle_damage(weapon, player, target_player, dist)
 	if weapons.player_list[tname].hp == nil then return end
 	local new_hp = weapons.player_list[tname].hp - weapon._damage
 	
+	print(weapons.player_list[tname].hp, new_hp, tname)
+
+	--if weapons.player_list[tname] == 0 then
+		--weapons.player_list[tname].hp = weapons.player_list[tname].hp_max
 	if weapons.player_list[tname].hp < 1 then
 		return
 	end
@@ -343,7 +388,7 @@ function weapons.handle_damage(weapon, player, target_player, dist)
 		if weapons.player_list[pname].team ==
 				weapons.player_list[tname].team then
 			if weapons.player_list[tname].hp < 
-				weapons.player_list[tname].hp_max then
+				weapons.player_list[tname].hp_max * 1.25 then
 					new_hp = weapons.player_list[tname].hp + weapon._heals
 			else
 				new_hp = weapons.player_list[tname].hp_max
@@ -354,37 +399,37 @@ function weapons.handle_damage(weapon, player, target_player, dist)
 	if weapons.player_list[pname].team ~=
 			weapons.player_list[tname].team then
 		if new_hp < 1 then
-			weapons.player_list[tname].hp = 0
 			weapons.kill_player(player, target_player, weapon, dist)
-			render_hitmarker(player)
+			weapons.hud.render_hitmarker(player)
 			minetest.sound_play("hitsound", {to_player=pname})
 			minetest.sound_play("player_impact", {pos=target_player:get_pos(),
 				max_hear_distance=6, gain=0.85})
 		else
 			weapons.player_list[tname].hp = new_hp
-			render_hitmarker(player)
+			weapons.hud.render_hitmarker(player)
 			minetest.sound_play("hitsound", {to_player=pname})	
 			minetest.sound_play("player_impact", {pos=target_player:get_pos(),
 				max_hear_distance=6, gain=0.98})
 		end
 	elseif pname == tname then
 		if new_hp < 1 then
-			weapons.player_list[tname].hp = 0
 			weapons.kill_player(player, player, weapon, dist)
+			minetest.sound_play("player_impact", {pos=target_player:get_pos(),
+				max_hear_distance=6, gain=0.85})
 		else
 			weapons.player_list[tname].hp = new_hp
 		end
 	else
 		if weapon._heals == nil then return 
-		elseif weapon._heals > 0 then
+		else
 			weapons.player_list[tname].hp = new_hp
-			render_hitmarker(player)
+			weapons.hud.render_hitmarker(player)
 			minetest.sound_play("hitsound", {to_player=pname})
 			minetest.sound_play("player_heal", {pos=target_player:get_pos(),
 				max_hear_distance=6, gain=0.98})
 		end
 	end
-	weapons.update_health(target_player)
+	weapons.hud.update_vignette(target_player)
 end
 
 local health_pos = {x=0.325, y=0.825}
@@ -396,8 +441,16 @@ local function set_keys(pname)
 	player_key_timer[pname] = 0
 end
 
+-- Handle a one time file load at bootup to ensure data is properly loaded
+if true then
+	local loaded, wpd, file_created = persistence.load_data("weapons_player_data", true)
+	weapons.player_data = table.copy(wpd)
+	wpd = nil
+end
+
 minetest.register_on_joinplayer(function(player)
 	local pname = player:get_player_name()
+
 	player_timers[pname] = {}
 	player_timers[pname].fire = 0
 	player_timers[pname].reload = 0
@@ -414,124 +467,8 @@ minetest.register_on_joinplayer(function(player)
 		minimap_radar = false
 	})
 
-	player_huds[pname] = {}
 	player_key_timer[pname] = 0
-
-	player_huds[pname].visual_1 = player:hud_add({
-		hud_elem_type = "image",
-		position = {x=0.5, y=0.5},
-		scale = {x=-100, y=-100},
-		text = "hud_vignette.png",
-		offset = {x=0, y=-1}
-	})
-
-	player_huds[pname].visual_2 = player:hud_add({
-		hud_elem_type = "image",
-		position = health_pos,
-		scale = {x=1, y=1},
-		text = "hud_overlay_left.png",
-	})
-
-	player_huds[pname].visual_3 = player:hud_add({
-		hud_elem_type = "image",
-		position = ammo_pos,
-		scale = {x=1, y=1},
-		text = "hud_overlay_right.png"
-	})
-
-	player_huds[pname].crosshair = player:hud_add({
-		hud_elem_type = "image",
-		position = {x=0.5, y=0.5},
-		scale = {x=1, y=1},
-		text = "transparent.png"
-	})
-
-	player_huds[pname].ammo_bg = player:hud_add({
-		hud_elem_type = "image",
-		position = ammo_pos,
-		offset = {x=65, y=0},
-		scale = {x=1, y=1},
-		text = "transparent.png"
-	})
-
-	player_huds[pname].hp_bg = player:hud_add({
-		hud_elem_type = "image",
-		position = health_pos,
-		offset = {x=0, y=12},
-		scale = {x=1, y=1},
-		text = "transparent.png"
-	})
-
-	player_huds[pname].hp_1 = player:hud_add({
-		hud_elem_type = "image",
-		position = health_pos,
-		offset = {x=-50, y=0},
-		scale = {x=1, y=1},
-		text = "transparent.png"
-	})
-	player_huds[pname].hp_2 = player:hud_add({
-		hud_elem_type = "image",
-		position = health_pos,
-		offset = {x=0, y=0},
-		scale = {x=1, y=1},
-		text = "transparent.png"
-	})
-	player_huds[pname].hp_3 = player:hud_add({
-		hud_elem_type = "image",
-		position = health_pos,
-		offset = {x=50, y=0},
-		scale = {x=1, y=1},
-		text = "transparent.png"
-	})
-
-	player_huds[pname].ammo_1 = player:hud_add({
-		hud_elem_type = "image",
-		position = ammo_pos,
-		scale = {x=1, y=1},
-		text = "transparent.png"
-	})
-	player_huds[pname].ammo_2 = player:hud_add({
-		hud_elem_type = "image",
-		position = ammo_pos,
-		offset = {x=50, y=0},
-		scale = {x=1, y=1},
-		text = "transparent.png"
-	})
-	player_huds[pname].ammo_s = player:hud_add({
-		hud_elem_type = "image",
-		position = ammo_pos,
-		offset = {x=100, y=0},
-		scale = {x=1, y=1},
-		text = "transparent.png"
-	})
-	player_huds[pname].ammo_m1 = player:hud_add({
-		hud_elem_type = "image",
-		position = ammo_pos,
-		offset = {x=150, y=0},
-		scale = {x=1, y=1},
-		text = "transparent.png"
-	})
-	player_huds[pname].ammo_m2 = player:hud_add({
-		hud_elem_type = "image",
-		position = ammo_pos,
-		offset = {x=200, y=0},
-		scale = {x=1, y=1},
-		text = "transparent.png"
-	})
-
-	player_huds[pname].reloading = player:hud_add({
-		hud_elem_type = "image",
-		position = {x=0.5, y=0.6},
-		scale = {x=1, y=1},
-		text = "transparent.png"
-	})
-
-	player_huds[pname].hitmarker = player:hud_add({
-		hud_elem_type = "image",
-		position = {x=0.5, y=0.5},
-		scale = {x=1, y=1},
-		text = "transparent.png"
-	})
+	return false
 end)
 
 function weapons.player.cancel_reload(player)
@@ -553,297 +490,109 @@ function weapons.player.cancel_reload(player)
 		-- we remember that clients are spuds
 		-- who can't handle 100ms packet decode times
 		if is_canceled then
-			player:hud_change(player_huds[pname].reloading,
+			player:hud_change(weapons.player_huds[pname].ammo.reloading,
 				"text", "transparent.png")
 		end
 	end
 end
 
-local function finish_reload(player, weapon, wieldname)
-	local pname = player:get_player_name()
-	if weapons.is_reloading[pname] == nil then
-		return
-	elseif weapons.is_reloading[pname][wieldname] then
-		weapons.is_reloading[pname][wieldname] = false
-		if weapons.player_list[pname] == nil then
-			return
+minetest.register_globalstep(function(dtime)
+	for _, player in ipairs(minetest.get_connected_players()) do
+		local pname = player:get_player_name()
+
+		if solarsail.controls.player[pname] == nil then
+		elseif solarsail.controls.player[pname].aux1 then
+			local wield = player:get_wielded_item():get_name()
+			local weapon = minetest.registered_nodes[wield]
+			if weapon.on_reload == nil then
+			else
+				weapon.on_reload(player, weapon, wield, true)
+			end
 		end
+	end
+end)
 
-		local ammo = weapon._ammo_type
-		weapons.player_list[pname][ammo] =
-			weapons.player_list[pname][ammo.."_max"]
-
-		-- Avoid sending HUD updates unless needed
-		if weapon._no_reload_hud then
+minetest.register_globalstep(function(dtime)
+	for _, player in ipairs(minetest.get_connected_players()) do
+		local pname = player:get_player_name()
+		if player_timers[pname] == nil then
 		else
-			player:hud_change(player_huds[pname].reloading,
-				"text", "transparent.png")
-		end
-	end
-end
-
-local function reload_controls()
-	for _, player in ipairs(minetest.get_connected_players()) do
-		local pname = player:get_player_name()
-
-		if solarsail.controls.player[pname] == nil then
-		elseif solarsail.controls.player[pname].aux1 then
+			player_timers[pname].fire =
+				player_timers[pname].fire + dtime
+			-- Get player's wieled weapon:
 			local wield = player:get_wielded_item():get_name()
 			local weapon = minetest.registered_nodes[wield]
+
 			if weapon == nil then
-			elseif weapon._mag ~= nil then
-				local ammo = weapon._ammo_type
-				if weapons.player_list[pname][ammo] < weapons.player_list[pname][ammo.."_max"] then
-					if weapons.player_list[pname][ammo] > 0 then
-						weapons.player_list[pname][ammo] = 0
-						if not weapons.is_reloading[pname][wield] then
-							weapons.is_reloading[pname][wield] = true
-							local p_inv = player:get_inventory()
-							local p_ind = player:get_wield_index()
-							local rel_node = minetest.registered_nodes[weapon._reload_node]
-							minetest.after(weapon._reload, finish_reload, player, weapon, wield)
-							minetest.sound_play({name=weapon._reload_sound},
-								{object=player, max_hear_distance=8, gain=0.15})
-							if weapon._no_reload_hud then
-							else
-								player:hud_change(player_huds[player:get_player_name()].reloading, 
-									"text", "reloading.png")
+			elseif weapon._name == nil then
+			elseif weapon._rpm == nil then
+			elseif player_timers[pname].fire > 60 / weapon._rpm  then
+				if solarsail.controls.player[pname].LMB then
+					player_timers[pname].fire = 0
+					if weapon._type == "gun" then
+						local ammo = weapon._ammo_type
+						if weapons.player_list[pname][ammo] > 0 then
+							if not weapons.is_reloading[pname][wield] then
+								weapon.on_fire(player, weapon)
 							end
 						end
-					end
-				end
-			end
-		end
-	end
-	minetest.after(0.03, reload_controls)
-end
-minetest.after(2, reload_controls)
-
-local function weapon_use_controls()
-	for _, player in ipairs(minetest.get_connected_players()) do
-		player_timers[player:get_player_name()].fire =
-			player_timers[player:get_player_name()].fire + 0.03
-		-- Get player's wieled weapon:
-		local wield = player:get_wielded_item():get_name()
-		local weapon = minetest.registered_nodes[wield]
-		local pname = player:get_player_name()
-
-		if weapon == nil then
-		elseif weapon._name == nil then
-		elseif weapon._rpm == nil then
-		elseif player_timers[pname].fire > 60 / weapon._rpm  then
-			if solarsail.controls.player[pname].LMB then
-				player_timers[pname].fire = 0
-				if weapon._mag ~= nil then
-					local ammo = weapon._ammo_type
-					if weapons.player_list[pname][ammo] > 0 then
-						if not weapons.is_reloading[pname][wield] then
+					elseif weapon._type == "block" then
+						if weapons.player_list[player:get_player_name()].blocks > 0 then
 							weapon.on_fire(player, weapon)
-							minetest.sound_play({name=weapon._firing_sound}, 
-								{pos=player:get_pos(), max_hear_distance=128, gain=1.75})
-							weapons.player_list[player:get_player_name()][ammo] = 
-								weapons.player_list[player:get_player_name()][ammo] - 1
-							if weapons.player_list[player:get_player_name()][ammo] == 0 then
-								weapons.is_reloading[pname][wield] = true
-								local p_inv = player:get_inventory()
-								local p_ind = player:get_wield_index()
-								if weapon._no_reload_hud then
-								else
-									player:hud_change(player_huds[player:get_player_name()].reloading, 
-										"text", "reloading.png")
-								end
-								minetest.sound_play({name=weapon._reload_sound},
-									{object=player, max_hear_distance=8, gain=0.15})
-								minetest.after(weapon._reload, finish_reload, player, weapon, wield)
-							end
+							weapons.player_list[player:get_player_name()].blocks = 
+								weapons.player_list[player:get_player_name()].blocks - 1
 						end
-					end
-				elseif weapon._type == "block" then
-					if weapons.player_list[player:get_player_name()].blocks > 0 then
+					elseif weapon._type == "tool" then
 						weapon.on_fire(player, weapon)
-						weapons.player_list[player:get_player_name()].blocks = 
-							weapons.player_list[player:get_player_name()].blocks - 1
+					elseif weapon._type == "tool_alt" then
+						weapon.on_fire(player, weapon)
 					end
-				elseif weapon._type == "tool" then
-					weapon.on_fire(player, weapon)
-				elseif weapon._type == "tool_alt" then
-					weapon.on_fire(player, weapon)
 				end
 			end
 		end
 	end
-	minetest.after(0.03, weapon_use_controls)
-end
-minetest.after(1, weapon_use_controls)
+end)
 
-local function render_hud()
-	for _, player in ipairs(minetest.get_connected_players()) do
-		local pname = player:get_player_name()
-		if weapons.player_list[pname].class ~= nil then
-			local wield = player:get_wielded_item():get_name()
-			local weapon = minetest.registered_nodes[wield]
-			
-			if weapon == nil then
-			elseif weapon._type == nil then
-			elseif weapon._ammo_type ~= nil then
-				local ammo = weapon._ammo_type
-				if weapons.player_list[pname][ammo] > 9 then
-					local a1 = tostring(weapons.player_list[pname][ammo]):sub(1,1)
-					local a2 = tostring(weapons.player_list[pname][ammo]):sub(2,2)
-					-- Prevent resending of HUD packets causing client desyncronisation
-					if a1 ~= weapons.player_list[pname].a1 then
-						player:hud_change(player_huds[pname].ammo_1, "text",
-							a1..".png")
-						weapons.player_list[pname].a1 = a1
-					end
-					if a2 ~= weapons.player_list[pname].a2 then
-						player:hud_change(player_huds[pname].ammo_2, "text",
-							a2..".png")
-						weapons.player_list[pname].a2 = a2
-					end
-				else
-					local a1 = "0"
-					local a2 = tostring(weapons.player_list[pname][ammo]):sub(1,1)
-					
-					-- Prevent resending of HUD packets
-					if a1 ~= weapons.player_list[pname].a1 then
-						player:hud_change(player_huds[pname].ammo_1, "text", "0.png")
-						weapons.player_list[pname].a1 = "0"
-					end
-					if a2 ~= weapons.player_list[pname].a2 then
-						player:hud_change(player_huds[pname].ammo_2, "text",
-							a2..".png")
-						weapons.player_list[pname].a2 = a2
-					end
-				end
-
-				if weapons.player_list[pname][ammo.."_max"] > 9 then
-					local m1 = tostring(weapons.player_list[pname][ammo.."_max"]):sub(1,1)
-					local m2 = tostring(weapons.player_list[pname][ammo.."_max"]):sub(2,2)
-
-					-- Prevent resending of HUD packets
-					if m1 ~= weapons.player_list[pname].m1 then
-						player:hud_change(player_huds[pname].ammo_m1, "text",
-							m1..".png")
-						weapons.player_list[pname].m1 = m1
-					end
-					if m2 ~= weapons.player_list[pname].m2 then
-						player:hud_change(player_huds[pname].ammo_m2, "text",
-							m2..".png")
-						weapons.player_list[pname].m2 = m2
-					end
-				else
-					local m1 = "0"
-					local m2 = tostring(weapons.player_list[pname][ammo.."_max"]):sub(1,1)
-					
-					if m1 ~= weapons.player_list[pname].m1 then
-						player:hud_change(player_huds[player:get_player_name()].ammo_m1, "text", "0.png")
-						weapons.player_list[pname].m1 = "0"
-					end
-
-					if m2 ~= weapons.player_list[pname].m2 then
-						player:hud_change(player_huds[player:get_player_name()].ammo_m2, "text",
-							m2..".png")
-						weapons.player_list[pname].m2 = m2
-					end
-				end
-
-				if not weapons.player_list[pname].slash then
-					player:hud_change(player_huds[player:get_player_name()].ammo_s, "text", "slash.png")
-					weapons.player_list[pname].slash = true
-				end
-			else
-				weapons.player_list[pname].a1 = "nil"
-				weapons.player_list[pname].a2 = "nil"
-				weapons.player_list[pname].m1 = "nil"
-				weapons.player_list[pname].m2 = "nil"
-				weapons.player_list[pname].slash = false
-				player:hud_change(player_huds[pname].ammo_1, "text", "transparent.png")
-				player:hud_change(player_huds[pname].ammo_m1, "text", "transparent.png")
-				player:hud_change(player_huds[pname].ammo_2, "text", "transparent.png")
-				player:hud_change(player_huds[pname].ammo_m2, "text", "transparent.png")
-				player:hud_change(player_huds[pname].ammo_s, "text", "transparent.png")
-			end
-			
-			if weapon == nil then
-				if weapons.player_list[pname].cross ~= "transparent" then
-					weapons.player_list[pname].cross = "transparent"
-					player:hud_change(player_huds[pname].crosshair, "text", "transparent.png")
-				end
-			elseif weapon._crosshair == nil then
-				if weapons.player_list[pname].cross ~= "transparent" then
-					weapons.player_list[pname].cross = "transparent"
-					player:hud_change(player_huds[pname].crosshair, "text", "transparent.png")
-				end
-			else
-				if weapons.player_list[pname].cross ~= weapon._crosshair then
-					player:hud_change(player_huds[pname].crosshair,
-						"text", weapon._crosshair)
-					weapons.player_list[pname].cross = weapon._crosshair
-				end
-			end
-
-			if weapon == nil then
-				if weapons.player_list[pname].ammo_bg ~= "transparent" then
-					player:hud_change(player_huds[pname].ammo_bg, "text", "transparent.png")
-					weapons.player_list[pname].ammo_bg = "transparent"
-				end
-			elseif weapon._ammo_bg == nil then
-				if weapons.player_list[pname].ammo_bg ~= "transparent" then
-					player:hud_change(player_huds[pname].ammo_bg, "text", "transparent.png")
-					weapons.player_list[pname].ammo_bg = "transparent"
-				end
-			else
-				if weapons.player_list[pname].ammo_bg ~= weapon._ammo_bg then
-					player:hud_change(player_huds[pname].ammo_bg, "text", weapon._ammo_bg .. ".png^[opacity:200")
-					weapons.player_list[pname].ammo_bg = weapon._ammo_bg
-				end
-			end
-		end
-	end
-	minetest.after(0.01, render_hud)
-end
-
-local function alternate_mode()
+minetest.register_globalstep(function(dtime)
 	for _, player in ipairs(minetest.get_connected_players()) do
 		local pname = player:get_player_name()
 		local wield = player:get_wielded_item():get_name()
 		local weapon = minetest.registered_nodes[wield]
-
-		player_key_timer[pname] =
-			player_key_timer[pname] + 0.03
 		
-		if solarsail.controls.player[pname] == nil then
-		elseif weapon == nil then
-			weapons.player_list[pname].aim_mode = false
-		elseif weapon._type == nil then
-			weapons.player_list[pname].aim_mode = false
-		-- Handle tools with the reload key as they lack reloads
-		elseif solarsail.controls.player[pname].aux1 then
-			if player_key_timer[pname] > 0.25 then
-				if weapon._type ~= "gun" then
-					player_key_timer[pname] = 0
-					player:set_wielded_item(ItemStack(weapon._alt_mode .. " 1"))
+		if player_key_timer[pname] == nil then
+		else
+			player_key_timer[pname] =
+				player_key_timer[pname] + 0.03
+		
+			if solarsail.controls.player[pname] == nil then
+			elseif weapon == nil then
+				weapons.player_list[pname].aim_mode = false
+			elseif weapon._type == nil then
+				weapons.player_list[pname].aim_mode = false
+			-- Handle tools with the reload key as they lack reloads
+			elseif solarsail.controls.player[pname].aux1 then
+				if player_key_timer[pname] > 0.25 then
+					if weapon._type ~= "gun" then
+						player_key_timer[pname] = 0
+						player:set_wielded_item(ItemStack(weapon._alt_mode .. " 1"))
+					end
 				end
-			end
-			weapons.player_list[pname].aim_mode = false
-		-- Handle aiming down sights or alternate modes but not when reloading:
-		elseif weapon._type == "gun" then
-			if not weapons.is_reloading[pname][wield] then
-				weapons.player_list[pname].aim_mode = solarsail.controls.player[pname].RMB
+				weapons.player_list[pname].aim_mode = false
+			-- Handle aiming down sights or alternate modes but not when reloading:
+			elseif weapon._type == "gun" then
+				if not weapons.is_reloading[pname][wield] then
+					weapons.player_list[pname].aim_mode = solarsail.controls.player[pname].RMB
+				else
+					weapons.player_list[pname].aim_mode = false
+				end
 			else
 				weapons.player_list[pname].aim_mode = false
 			end
-		else
-			weapons.player_list[pname].aim_mode = false
 		end
 	end
-	minetest.after(0.03, alternate_mode)
-end
-minetest.after(2, alternate_mode)
-minetest.after(2, render_hud)
+end)
 
-local function handle_fov()
+minetest.register_globalstep(function(dtime)
 	for _, player in ipairs(minetest.get_connected_players()) do
 		local pname = player:get_player_name()
 		local wield = player:get_wielded_item():get_name()
@@ -877,11 +626,11 @@ local function handle_fov()
 			end
 		end
 	end
-	minetest.after(0.03, handle_fov)
-end
-minetest.after(1, handle_fov)
+end)
 
-local function handle_alt_physics()
+	--[[ TODO: fix physics intergration with create a class
+
+minetest.register_globalstep(function(dtime)
 	for _, player in ipairs(minetest.get_connected_players()) do
 		local wield = player:get_wielded_item():get_name()
 		local weapon = minetest.registered_nodes[wield]
@@ -900,28 +649,26 @@ local function handle_alt_physics()
 			player_phys[pname] = 1
 		elseif player_phys[pname] ~= weapon._phys_alt then
 			local new_phys = 
-				table.copy(weapons[weapons.player_list[pname].class].physics)
+			table.copy(weapons[weapons.player_list[pname].class].physics)
 			new_phys.speed = new_phys.speed * weapon._phys_alt
 			--new_phys.jump = new_phys.jump * weapon._phys_alt
 			player:set_physics_override(new_phys)
 			player_phys[pname] = weapon._phys_alt
 		end
 	end
-	minetest.after(0.03, handle_alt_physics)
-end
---handle_alt_physics()
-
-function core.spawn_item(pos, item)
-	return
-end
+end)
+	
+	]]
 
 -- We now have access to other functions defined here:
 dofile(minetest.get_modpath("weapons").."/skybox.lua")
+dofile(minetest.get_modpath("weapons").."/chat.lua")
+dofile(minetest.get_modpath("weapons").."/hud.lua")
 dofile(minetest.get_modpath("weapons").."/builtin_blocks.lua")
 dofile(minetest.get_modpath("weapons").."/weapons.lua")
 
 -- Player viewmodel settings:
-dofile(minetest.get_modpath("weapons").."/arms/assault.lua")
+dofile(minetest.get_modpath("weapons").."/arms/player_arms.lua")
 dofile(minetest.get_modpath("weapons").."/arms/player_body.lua")
 
 dofile(minetest.get_modpath("weapons").."/player.lua")
@@ -934,6 +681,10 @@ dofile(minetest.get_modpath("weapons").."/weapons/tools.lua")
 dofile(minetest.get_modpath("weapons").."/weapons/blocks.lua")
 -- External weapons
 dofile(minetest.get_modpath("weapons").."/weapons/assault_rifle.lua")
+dofile(minetest.get_modpath("weapons").."/weapons/burst_rifle.lua")
+dofile(minetest.get_modpath("weapons").."/weapons/sniper_rifle.lua")
+dofile(minetest.get_modpath("weapons").."/weapons/scout_rifle.lua")
+dofile(minetest.get_modpath("weapons").."/weapons/auto_shotgun.lua")
 --dofile(minetest.get_modpath("weapons").."/weapons/railgun.lua")
 --dofile(minetest.get_modpath("weapons").."/weapons/smg.lua")
 --dofile(minetest.get_modpath("weapons").."/weapons/shotgun.lua")

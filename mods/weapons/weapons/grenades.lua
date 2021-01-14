@@ -293,7 +293,7 @@ local function register_grenade(name, class, killfeed_name, stats)
 
 	function grenade_node.on_fire(player, weapon)
 		local gren_pos = vector.add(
-			vector.add(player:get_pos(), vector.new(0, 1.64, 0)), 
+			vector.add(player:get_pos(), vector.new(0, weapons.default_eye_height, 0)), 
 				vector.multiply(player:get_look_dir(), 1)
 		)
 

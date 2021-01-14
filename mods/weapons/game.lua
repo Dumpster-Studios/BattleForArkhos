@@ -11,9 +11,11 @@ weapons.teams.red_colour = 0xFF6464
 weapons.teams.red_string = "#ff6464"
 weapons.teams.blue_colour = 0x7575FF
 weapons.teams.blue_string = "#7575ff"
+weapons.teams.no_team = "#ff75ff"
+weapons.teams.no_team_hex = 0xff75ff
 weapons.score = {}
-weapons.score.red = 0
-weapons.score.blue = 0
+weapons.score.red = 500
+weapons.score.blue = 500
 
 weapons.team_names = {}
 weapons.team_names.red = "Red Team"
@@ -23,6 +25,20 @@ weapons.team_names.blue_icon = "blue_team.png"
 
 weapons.flag_pos = {}
 weapons.flag_ref = {}
+
+function weapons.team_colourize(player, message)
+	local pname = player:get_player_name()
+	
+	if weapons.player_list[pname] == nil then
+		return minetest.colorize(weapons.teams.no_team, message)
+	elseif weapons.player_list[pname].team == "red" then
+		return minetest.colorize(weapons.teams.red_string, message)
+	elseif weapons.player_list[pname].team == "blue" then
+		return minetest.colorize(weapons.teams.blue_string, message)
+	else
+		return minetest.colorize(weapons.teams.no_team, message)
+	end
+end
 
 function weapons.assign_team(player, team)
 	local pname = player:get_player_name()
@@ -34,60 +50,29 @@ function weapons.assign_team(player, team)
 			if rando == 1 then
 				weapons.teams.red = weapons.teams.red + 1
 				weapons.player_list[pname].team = "red"
-				minetest.chat_send_all(minetest.colorize(weapons.teams.red_string, pname) ..
-										" has joined the " .. 
-										minetest.colorize(weapons.teams.red_string, weapons.team_names.red))
-				minetest.log("action", 
-					pname.. " has been automatically assigned to " .. weapons.team_names.red)
-				weapons.discord_send_message("**" .. pname .. "**" .. " has joined the " .. weapons.team_names.red)
 			else
 				weapons.teams.blue = weapons.teams.blue + 1
 				weapons.player_list[pname].team = "blue"
-				minetest.chat_send_all(minetest.colorize(weapons.teams.blue_string, pname) ..
-										" has joined the " .. 
-										minetest.colorize(weapons.teams.blue_string, weapons.team_names.blue))
-				minetest.log("action", 
-					pname.. " has been automatically assigned to " .. weapons.team_names.blue)
-				weapons.discord_send_message("**" .. pname .. "**" .. " has joined the " .. weapons.team_names.blue)
 			end
 		elseif weapons.teams.red < weapons.teams.blue then
 			weapons.teams.red = weapons.teams.red + 1
 			weapons.player_list[pname].team = "red"
-			minetest.chat_send_all(minetest.colorize(weapons.teams.red_string, pname) ..
-										" has joined the " .. 
-										minetest.colorize(weapons.teams.red_string, weapons.team_names.red))
-			minetest.log("action", 
-				pname.. " has been automatically assigned to " .. weapons.team_names.red)
-			weapons.discord_send_message("**" .. pname .. "**" .. " has joined the " .. weapons.team_names.red)
 		elseif weapons.teams.red > weapons.teams.blue then
 			weapons.teams.blue = weapons.teams.blue + 1
 			weapons.player_list[pname].team = "blue"
-			minetest.chat_send_all(minetest.colorize(weapons.teams.blue_string, pname) ..
-										" has joined the " .. 
-										minetest.colorize(weapons.teams.blue_string, weapons.team_names.blue))
-			minetest.log("action", 
-				pname.. " has been automatically assigned to " .. weapons.team_names.blue)
-			weapons.discord_send_message("**" .. pname .. "**" .. " has joined the " .. weapons.team_names.blue)
 		end
 	elseif team == "blue" then
 		weapons.teams.blue = weapons.teams.blue + 1
 		weapons.player_list[pname].team = "blue"
-		minetest.chat_send_all(minetest.colorize(weapons.teams.blue_string, pname) ..
-										" has joined the " .. 
-										minetest.colorize(weapons.teams.blue_string, weapons.team_names.blue))
-		minetest.log("action", 
-			pname.. " has switched to " .. weapons.team_names.blue)
-		weapons.discord_send_message("**" .. pname .. "**" .. " has joined the " .. weapons.team_names.blue)
 	elseif team == "red" then
 		weapons.teams.red = weapons.teams.red + 1
 		weapons.player_list[pname].team = "red"
-		minetest.chat_send_all(minetest.colorize(weapons.teams.red_string, pname) ..
-										" has joined the " .. 
-										minetest.colorize(weapons.teams.red_string, weapons.team_names.red))
-		minetest.log("action", 
-			pname.. " has switched to " .. weapons.team_names.red)
-		weapons.discord_send_message("**" .. pname .. "**" .. " has joined the " .. weapons.team_names.red)
 	end
+	minetest.chat_send_all(weapons.team_colourize(player, weapons.get_nick(player) .. " has joined the " .. weapons.team_names[weapons.player_list[pname].team]  .. "."))
+	weapons.discord_send_message("**" .. weapons.get_nick(player) .. "**" .. " has joined the " .. weapons.team_names[weapons.player_list[pname].team])
+	minetest.log("action", 
+		pname .. " has been automatically assigned to " .. weapons.team_names[weapons.player_list[pname].team] .. ".")
+	weapons.respawn_player(player, false)
 end
 
 minetest.register_on_leaveplayer(function(player, timed_out)
@@ -196,7 +181,7 @@ end
 
 local map_seed = minetest.get_mapgen_setting("seed")
 local map_gen = minetest.get_mapgen_setting("mg_name")
-minetest.after(1, weapons.discord_send_message, "Starting game mode CTF on map seed: `" .. map_seed .. "` on map generator " .. 
-					map_gen:sub(1,1):upper()..map_gen:sub(2) .. ".")
+minetest.after(1, weapons.discord_send_message, "Starting game mode Attrition on map seed: `" .. map_seed .. "` on map generator " .. 
+	map_gen:sub(1,1):upper()..map_gen:sub(2) .. ".")
 
 --minetest.after(10, ctf_spawn_flags)

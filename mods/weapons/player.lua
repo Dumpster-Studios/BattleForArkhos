@@ -42,115 +42,18 @@ base_class.physics = {
 	sneak_glitch = true,
 	new_move = false
 }
-
-local assault = {}
-assault.stats = {
-	hp = 100,
-	blocks = 20,
-}
-assault.items = {
+base_class.items = {
 	"weapons:assault_rifle",
-	--"weapons:rocket_launcher",
+	"weapons:burst_rifle",
+	"weapons:sniper_rifle",
+	"weapons:veteran_rifle",
+	"weapons:pump_shotgun",
 	"weapons:pickaxe",
-	"core:team_neutral",
-}
-assault.physics = {
-	speed = 1,
-	jump = 1,
-	gravity = 1,
-	sneak = true,
-	sneak_glitch = true,
-	new_move = false
+	"core:team_neutral"
 }
 
-local marksman = {}
-marksman.stats = {
-	hp = 125,
-	blocks = 75,
-}
-marksman.items = {
-	"weapons:railgun",
-	--"weapons:pistol",
-	"weapons:smoke_grenade",
-	"weapons:pickaxe",
-	"core:team_neutral",
-}
-marksman.physics = {
-	speed = 0.95,
-	jump = 1.5,
-	gravity = 1,
-	sneak = true,
-	sneak_glitch = true,
-	new_move = false
-}
-
-local medic = {}
-medic.stats = {
-	hp = 125,
-	blocks = 35,
-}
-medic.items = {
-	"weapons:smg",
-	"weapons:heal_grenade",
-	--"weapons:injector",
-	"weapons:pickaxe",
-	"core:team_neutral",
-}
-medic.physics = {
-	speed = 1.4,
-	jump = 1.25,
-	gravity = 1,
-	sneak = true,
-	sneak_glitch = true,
-	new_move = false
-}
-local scout = {}
-scout.stats = {
-	hp = 75,
-	blocks = 25,
-}
-scout.items = {
-	"weapons:shotgun",
-	"weapons:frag_grenade",
-	"weapons:pickaxe",
-	"core:team_neutral",
-}
-scout.physics = {
-	speed = 1.8,
-	jump = 1.65,
-	gravity = 1,
-	sneak = true,
-	sneak_glitch = true,
-	new_move = false
-}
-
-local red_flag = {
-	items = {
-		"weapons:flag_red"
-	}
-}
-
-local blue_flag = {
-	items = {
-		"weapons:flag_blue"
-	}
-}
-
-weapons.assault = assault
-weapons.marksman = marksman
-weapons.medic = medic
-weapons.scout = scout
 weapons.red_flag = red_flag
 weapons.blue_flag = blue_flag
-
-weapons.class_formspec =
-	"size[8,8]"..
-	"button[0,7;2,1;assault;Assault]"..
-	--"button[2,7;2,1;marksman;Marksman]"..
-	--"button[4,7;2,1;medic;Medic]"..
-	--"button[6,7;2,1;scout;Scout]"..
-	"button[0,0;4,1;lefty;Left Shoulder View]"..
-	"button[4,0;4,1;righty;Right Shoulder View]"
 
 local function clear_inv(player)
 	local p_inv = player:get_inventory()
@@ -163,41 +66,26 @@ weapons.clear_inv = clear_inv
 local function add_class_items(player, class)
 	local p_inv = player:get_inventory()
 	local pname = player:get_player_name()
-	for k, stack in pairs(weapons[class].items) do
+	for k, stack in pairs(base_class.items) do
 		local istack = ItemStack(stack .. " 1")
-		local node = minetest.registered_nodes[stack .. "_" ..
-			weapons.player_list[pname].team]
-		if node == nil then
-		elseif node._type == nil then
-		else
-			istack = ItemStack(stack .. " 1")
-		end
 		p_inv:add_item("main", istack)
 		-- Hacky bullshit part 69
 		-- This doesn't cancel reloading at all, it just for some reason doesn't
 		-- properly *apply* it.
-		weapons.is_reloading[pname][stack .."_"..weapons.player_list[pname].team] = false
+		weapons.is_reloading[pname][stack] = false
 	end
-	player:hud_set_hotbar_itemcount(#weapons[class].items)
+	player:hud_set_hotbar_itemcount(#base_class.items)
 end
 
 weapons.add_class_items = add_class_items
 
-local function set_player_physics(player, class)
-	if class == "assault" then
-		player:set_physics_override(assault.physics)
-	elseif class == "marksman" then
-		player:set_physics_override(marksman.physics)
-	elseif class == "medic" then
-		player:set_physics_override(medic.physics)
-	elseif class == "scout" then
-		player:set_physics_override(scout.physics)
-	end
+local function set_player_physics(player)
+
 end
 
 local function set_ammo(player, class)
 	local pname = player:get_player_name()
-	for _, stack in pairs(weapons[class].items) do
+	for _, stack in pairs(base_class.items) do
 		-- Big hax btw, teams can have differing magazine sizes
 		local weapon = minetest.registered_nodes[stack]
 
@@ -216,17 +104,17 @@ local function set_ammo(player, class)
 			end
 		end
 	end
-	weapons.player_list[pname].blocks = weapons[class].stats.blocks
-	weapons.player_list[pname].blocks_max = weapons[class].stats.blocks
+	weapons.player_list[pname].blocks = base_class.stats.blocks
+	weapons.player_list[pname].blocks_max = base_class.stats.blocks
 end
 
 weapons.set_ammo = set_ammo
 
 local function set_health(player, class)
-	weapons.player_list[player:get_player_name()].hp = weapons[class].stats.hp
-	weapons.player_list[player:get_player_name()].hp_max = weapons[class].stats.hp
-	weapons.update_health(player)
-	weapons.fix_hp_bg(player)
+	local pname = player:get_player_name()
+	weapons.player_list[pname].hp = base_class.stats.hp
+	weapons.player_list[pname].hp_max = base_class.stats.hp
+	weapons.hud.force_hp_refresh(player)
 end
 
 weapons.force_anim_group = {}
@@ -323,13 +211,13 @@ minetest.register_on_joinplayer(function(player)
 end)
 
 -- cache bone positions for speed
-local head_rot  = -90
-local head_body = vector.new(0,0,0)
-local body_pos  = vector.new(0,0,0)
+local head_rot  = vector.new(-90,0,180)
+local head_pos  = vector.new(0,0,-5)
+local body_pos  = vector.new(0,0,-4.5)
 local body_rot  = vector.new(-90,0,180)
 local legs_pos  = vector.new(0,0,-6)
 local legs_rot  = vector.new(90,0,180)
-local arms_pos  = vector.new(0,0,0)
+local arms_pos  = vector.new(0,10,0)
 local arms_rot  = vector.new(0,0,0)
 local nulvec    = vector.new(0,0,0)
 
@@ -343,7 +231,6 @@ function weapons.player.set_class(player, class)
 	weapons.player_list[pname].class = class
 	set_ammo(player, class)
 	add_class_items(player, class)
-	weapons.update_health(player)
 
 	-- Add player body
 	local ppos = player:get_pos()
@@ -351,19 +238,17 @@ function weapons.player.set_class(player, class)
 	local plb_lae = weapons.player_body[pname]:get_luaentity()
 	plb_lae._player_ref = player
 	weapons.player_body[pname]:set_properties({textures = {"assault_class_" .. weapons.player_list[pname].team .. ".png"}})
-	weapons.player_body[pname]:set_attach(player, "",  nul_vec, nul_vec, true)
+	weapons.player_body[pname]:set_attach(player, "",  nulvec, nulvec, true)
 	weapons.player_body[pname]:set_bone_position("Armature_Root", body_pos, body_rot)
 	weapons.player_body[pname]:set_bone_position("Armature_Legs", legs_pos, legs_rot)
 
 	-- Add wield arms
-	weapons.player_arms[pname] = minetest.add_entity(ppos, "weapons:assault_arms")
+	weapons.player_arms[pname] = minetest.add_entity(ppos, "weapons:player_arms")
 	local pla_lae = weapons.player_arms[pname]:get_luaentity()
 	pla_lae._player_ref = player
-	weapons.player_arms[pname]:set_properties({textures = {"assault_class_" .. weapons.player_list[pname].team .. ".png", pla_lae._texture}})
+	--weapons.player_arms[pname]:set_properties({textures = {"assault_class_" .. weapons.player_list[pname].team .. ".png", pla_lae._texture}})
 	weapons.player_arms[pname]:set_attach(player, "", nulvec, nulvec, true)
 	weapons.player_arms[pname]:set_bone_position("Armature_Root", arms_pos, arms_rot)
-
-	weapons.respawn_player(player, false)
 	player:set_properties({
 		visual = "mesh",
 		mesh = "player_head.x",
@@ -373,9 +258,10 @@ function weapons.player.set_class(player, class)
 		visual_size = {x=1.05, y=1.05},
 		collisionbox = {-0.3, 0.0, -0.3, 0.3, 1.77, 0.3},
 		nametag = "",
-		stepheight = 0.6,
-		eye_height = 1.64,
+		stepheight = 1.1,
+		eye_height = weapons.default_eye_height,
 	})	
+	player:set_bone_position("Armature_Root", head_pos, head_rot)
 end
 
 minetest.register_on_leaveplayer(function(player, timed_out)
@@ -385,26 +271,11 @@ minetest.register_on_leaveplayer(function(player, timed_out)
 		weapons.player_arms[pname]:remove()
 		weapons.player_arms[pname] = nil
 	end
-	if weapon.player_body[pname] ~= nil then
+	if weapons.player_body[pname] ~= nil then
 		weapons.player_body[pname]:remove()
 		weapons.player_body[pname] = nil
 	end
 end)
-
-minetest.register_chatcommand("class", {
-	description = "Choose a class.",
-	func = function(name, param)
-		local player = minetest.get_player_by_name(name)
-		local pos = player:get_pos()
-		local pos2
-		if weapons.player_list[player:get_player_name()].team == "red" then
-			pos2 = {x=207-35, y=weapons.red_base_y, z=207-35}
-		else
-			pos2 = {x=-143, y=weapons.blu_base_y, z=-143}
-		end
-		minetest.show_formspec(name, "class_select", weapons.class_formspec)
-	end,
-})
 
 minetest.register_chatcommand("respawn", {
 	description = "Respawn back to base if stuck.",
@@ -514,11 +385,27 @@ minetest.register_globalstep(function(dtime)
 		end
 		if true then -- Arms animation utilities, are locked frame wise; if weapon doesn't match prior, it's canceled.
 			if wield ~= last_arm[pname] then
+				-- Unlock if there's an active minetest.after registered
+				-- and if the wield is swapped
 				if arm_after[pname] ~= "" then
 					arm_after[pname]:cancel()
 					unlock_arms(pname)
 					arm_after[pname] = ""
+				end				
+				
+				-- Update arms visuals
+				if weapon == nil then
+				elseif weapon._arms == nil then -- Prevent nil crashing
+				else
+					unlock_arms(pname)
+					-- TODO: replace with weapons.get_player_skin(player)
+					local player_skin = "assault_class_"..weapons.player_list[player:get_player_name()].team..".png"
+					weapons.player_arms[pname]:set_properties({
+						mesh = weapon._arms.mesh,
+						textures = {player_skin, weapon._arms.texture}
+					})
 				end
+				last_arm[pname] = wield
 			end
 
 			if weapon == nil then
@@ -526,7 +413,8 @@ minetest.register_globalstep(function(dtime)
 				if weapon._anim == nil then
 				elseif arm_frame[pname] == -1 then
 					local result_frames
-					if weapons.is_reloading[pname][wield] then
+					if weapons.is_reloading[pname][wield] == nil then
+					elseif weapons.is_reloading[pname][wield] then
 						arm_frame[pname] = 0
 						arm_type[pname] = "reload"
 						arm_after[pname] = minetest.after(weapon._reload + 0.03, unlock_arms, pname)
@@ -567,9 +455,6 @@ minetest.register_globalstep(function(dtime)
 						end
 					end
 				end
-			end
-			if last_arm[pname] ~= wield then
-				last_arm[pname] = wield
 			end
 		end
 	end

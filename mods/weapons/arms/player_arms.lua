@@ -6,14 +6,13 @@
 
 local ent = {
 	visual = "mesh",
-	mesh = "assault_arms.x",
-	textures = {"transparent.png", "assault_rifle.png"},
+	mesh = "assault_arms.x", -- I'd leave this blank but fucking minetest is too smooth brain for that
+	textures = {"transparent.png"}, -- so the bigger hack is to fucking use an invisible texture lmao.
 	physical = false,
 	backface_culling = false,
 	collide_with_objects = false,
 	visual_size = {x=1.05, y=1.05},
 	pointable = false,
-	_texture = "assault_rifle.png",
 }
 
-minetest.register_entity("weapons:assault_arms", ent)
+minetest.register_entity("weapons:player_arms", ent)

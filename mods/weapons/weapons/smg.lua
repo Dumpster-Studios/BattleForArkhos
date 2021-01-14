@@ -91,7 +91,7 @@ local function add_extras(player)
 	local dir = vector.new(pz, 0, -px)
 	local res
 
-	local pvel = player:get_player_velocity()
+	local pvel = player:get_velocity()
 	pvel.x = pvel.x/2
 	pvel.y = pvel.y/2
 	pvel.z = pvel.z/2
