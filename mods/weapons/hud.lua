@@ -1,7 +1,7 @@
 weapons.hud = {}
 
 local ammo_x_offset = -32
-local ammo_y_offset = 64
+local ammo_y_offset = 64+16
 local max_vig_opacity = 255
 local min_vig_opacity = 128
 local red_value = 128
@@ -27,6 +27,7 @@ local hp_scale = {
 }
 
 local last_ammo_count = {}
+local last_weapon = {}
 local last_crosshair = {}
 
 local function reset_hud_offsets(pname)
@@ -106,14 +107,57 @@ local function calc_ammo_bar_pos(player, weapon)
 	end
 end
 
+local function get_ammo_appearances(player, weapon)
+	local over_colour = minetest.rgba(0, 25, 75)
+	local over_string = "hud_bar_overlay.png^[opacity:127"
+	local weapon = minetest.registered_nodes[player:get_wielded_item():get_name()]
+	local is_thermal = false
+	if weapon._is_energy == nil then
+	elseif weapon._is_energy then
+		is_thermal = true
+	end
+
+	-- Handle a case where the gradient may need to be flipped for thermal/energy weapons
+	if is_thermal then
+		over_colour = minetest.rgba(255, 0, 0) -- Define from the equipped weapon
+	end
+	-- Apply a colour from the weapon
+	over_string = over_string.."^[multiply:"..over_colour
+
+	-- Handle ammo bar texture-y things here, such as the gradient
+	local ab_fg_colour = minetest.rgba(255, 255, 255)
+	local ab_bg_colour = minetest.rgba(64, 64, 64)
+	local ammo_bar_fg = "hud_bar.png"
+	local ammo_bar_bg = "hud_bar.png"
+
+	if is_thermal then -- Make the darker bar on top, instead of the lower bar
+		ab_fg_colour = minetest.rgba(64, 64, 64)
+		ab_bg_colour = minetest.rgba(255, 255, 255)
+	end
+	ammo_bar_fg = ammo_bar_fg .. "^[multiply:" .. ab_fg_colour
+	ammo_bar_bg = ammo_bar_bg .. "^[multiply:" .. ab_bg_colour
+
+	return over_string, ammo_bar_fg, ammo_bar_bg
+end
+
 local function hud_update_ammo(player, bar_pos, weapon)
 	local pname = player:get_player_name()
 	player:hud_change(weapons.player_huds[pname].ammo.ammo_bar, "number", bar_pos)
 	if weapon._ammo_type == nil then
 		player:hud_change(weapons.player_huds[pname].ammo.ammo_count, "text", "err()")
 	else
-		player:hud_change(weapons.player_huds[pname].ammo.ammo_count, "text", 
-			weapons.player_list[pname][weapon._ammo_type] .. "/" .. weapons.player_list[pname][weapon._ammo_type.."_max"])
+		local ammostring = ""
+		if weapon._is_energy == nil then
+			ammostring = 
+				weapons.player_list[pname][weapon._ammo_type] .. "/" .. weapons.player_list[pname][weapon._ammo_type.."_max"]
+		elseif weapon._is_energy then
+			ammostring = weapons.player_list[pname][weapon._ammo_type] .. "%"
+		else
+			ammostring = 
+				weapons.player_list[pname][weapon._ammo_type] .. "/" .. weapons.player_list[pname][weapon._ammo_type.."_max"]
+		end
+		player:hud_change(weapons.player_huds[pname].ammo.ammo_count, "text", ammostring)
+
 	end
 end
 
@@ -177,18 +221,7 @@ function weapons.hud.draw_ammo(pname, scale, count_text, count_ammo)
 		})
 	end
 
-	-- TODO move to a function
-	local over_colour = minetest.rgba(0, 25, 75)
-	local over_string = "hud_bar_overlay.png^[opacity:127"
-	local is_thermal = false
-
-	-- Handle a case where the gradient may need to be flipped for thermal/energy weapons
-	if is_thermal then
-		-- Testing values
-		over_colour = minetest.rgba(255, 0, 0) -- Define from the equipped weapon
-	end
-	-- Apply a colour from the weapon
-	over_string = over_string.."^[multiply:"..over_colour
+	local over_string, ammo_bar_fg, ammo_bar_bg = get_ammo_appearances(player, weapon)
 
 	weapons.player_huds[pname].ammo.ammo_overlay = player:hud_add({
 		hud_elem_type = "image",
@@ -200,23 +233,6 @@ function weapons.hud.draw_ammo(pname, scale, count_text, count_ammo)
 		z_index = -995
 	})
 
-	-- Handle ammo bar texture-y things here, such as the gradient
-	local ab_fg_colour = minetest.rgba(255, 255, 255)
-	local ab_bg_colour = minetest.rgba(64, 64, 64)
-	local ammo_bar_fg = "hud_bar.png"
-	local ammo_bar_bg = "hud_bar.png"
-	local ammo_dir = 1
-	local ammo_ind = -997
-
-	if is_thermal then -- Make the darker bar on top, instead of the lower bar
-		ab_fg_colour = minetest.rgba(64, 64, 64)
-		ab_bg_colour = minetest.rgba(255, 255, 255)
-		--ammo_dir = 0
-		--ammo_ind = -990
-	end
-	ammo_bar_fg = ammo_bar_fg .. "^[multiply:" .. ab_fg_colour
-	ammo_bar_bg = ammo_bar_bg .. "^[multiply:" .. ab_bg_colour
-
 	weapons.player_huds[pname].ammo.ammo_bar = player:hud_add({
 		hud_elem_type = "statbar",
 		position = {x=1, y=0},
@@ -225,7 +241,7 @@ function weapons.hud.draw_ammo(pname, scale, count_text, count_ammo)
 		number = count_ammo, -- FG
 		direction = 1,
 		size = {x=ammo_scale.bar_x*scale, y=ammo_scale.bar_y*scale},
-		z_index = ammo_ind
+		z_index = -997
 	})
 
 	weapons.player_huds[pname].ammo.ammo_bar_bg = player:hud_add({
@@ -478,6 +494,7 @@ minetest.register_on_joinplayer(function(player)
 	weapons.player_huds[pname].misc = {}
 	last_ammo_count[pname] = 0
 	last_crosshair[pname] = "InVaLiD TeXtUrE.mP4"
+	last_weapon[pname] = "InVaLiD WeApOn.webm"
 
 	weapons.player_huds[pname].misc.vignette = player:hud_add({
 		hud_elem_type = "image",

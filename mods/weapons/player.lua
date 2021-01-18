@@ -48,6 +48,7 @@ base_class.items = {
 	"weapons:sniper_rifle",
 	"weapons:veteran_rifle",
 	"weapons:pump_shotgun",
+	"weapons:plasma_autorifle",
 	"weapons:pickaxe",
 	"core:team_neutral"
 }
@@ -97,10 +98,19 @@ local function set_ammo(player, class)
 			-- Allow certain magazine sizes to be class defined:
 			if weapon._mag == nil then
 			else
-				weapons.player_list[pname][weapon._ammo_type] =
-					weapon._mag
-				weapons.player_list[pname][weapon._ammo_type .. "_max"] =
-					weapon._mag
+				if weapon._is_energy == nil then
+					weapons.player_list[pname][weapon._ammo_type] = weapon._mag
+					weapons.player_list[pname][weapon._ammo_type .. "_max"] = weapon._mag
+					weapons.player_list[pname][weapon._ammo_type .. "_energy"] = false
+				elseif weapon._is_energy then
+					weapons.player_list[pname][weapon._ammo_type] = 0
+					weapons.player_list[pname][weapon._ammo_type .. "_max"] = 100
+					weapons.player_list[pname][weapon._ammo_type .. "_energy"] = true
+				else
+					weapons.player_list[pname][weapon._ammo_type] = weapon._mag
+					weapons.player_list[pname][weapon._ammo_type .. "_max"] = weapon._mag
+					weapons.player_list[pname][weapon._ammo_type .. "_energy"] = false
+				end
 			end
 		end
 	end

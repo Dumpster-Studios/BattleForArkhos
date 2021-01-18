@@ -1,0 +1,205 @@
+-- Dumpster Studios, Battle for Arkhos
+-- Author Jordach
+-- License Reserved
+
+function weapons.get_nick(player)
+	local pname = player:get_player_name()
+	if weapons.player_data[pname] == nil then
+		return pname
+	elseif weapons.player_data[pname].nick == nil then
+		return pname
+	else
+		return weapons.player_data[pname].nick
+	end
+end
+
+function solarsail.util.functions.y_direction(rads, recoil)
+	return math.sin(rads) * recoil
+end
+
+function solarsail.util.functions.xz_amount(rads)
+	local pi = math.pi
+	return math.sin(rads+(pi/2))
+end
+
+-- Takes vector based velocities or positions (as vec_a to vec_b)
+function solarsail.util.functions.get_3d_angles(vector_a, vector_b)
+	-- Does the usual Pythagoras bullshit:
+	local x_dist = vector_a.x - vector_b.x + 1
+	local z_dist = vector_a.z - vector_b.z + 1
+	local hypo = math.sqrt(x_dist^2 + z_dist^2)
+
+	-- But here's the kicker: we're using arctan to get the cotangent of the angle,
+	-- but also applies to *negative* numbers. In such cases where the positions
+	-- are northbound (positive z); the angle is 180 degrees off.
+	local xz_angle = -math.atan(x_dist/z_dist)
+	
+	-- For the pitch angle we do it very similar, but use the 
+	-- Hypotenuse as the Adjacent side, and the Y distance as the
+	-- Opposite, so arctangents are needed.
+	local y_dist = vector_a.y - vector_b.y
+	local y_angle = math.atan(y_dist/hypo)
+	
+	-- Fixes radians using south facing (-Z) radians when heading north (+Z)
+	if z_dist < 0 then
+		xz_angle = xz_angle - math.rad(180)
+	end
+	return xz_angle, y_angle
+end
+
+function solarsail.util.functions.apply_recoil(player, weapon)
+	local yaw_rad = player:get_look_horizontal()
+	local pitch_rad = player:get_look_vertical()
+	-- Physical knockback; can be canceled out
+	local result_x, result_z = 
+			solarsail.util.functions.yaw_to_vec(yaw_rad, weapon._recoil, true)
+	local result_y = 
+			solarsail.util.functions.y_direction(pitch_rad, weapon._recoil)
+	local pitch_mult = solarsail.util.functions.xz_amount(pitch_rad)
+	player:add_velocity({
+		x=result_x * pitch_mult, 
+		y=result_y, 
+		z=result_z * pitch_mult
+	})
+	
+	-- Camera recoil; cannot be canceled out
+	local vert_deg, hori_deg, look_pitch, look_hori = 0
+	vert_deg = math.random(weapon._recoil_vert_min * 100, weapon._recoil_vert_max * 100) / 100
+	hori_deg = math.random(-weapon._recoil_hori * 100, weapon._recoil_hori * 100) / 100
+	
+	-- Handle aiming
+	local pname = player:get_player_name()
+	if weapons.player_list[pname].aim_mode then
+		look_pitch = player:get_look_vertical() + (math.rad(-vert_deg) * weapon._recoil_aim_factor)
+		look_hori = player:get_look_horizontal() + (math.rad(hori_deg) * weapon._recoil_aim_factor)
+	else
+		look_pitch = player:get_look_vertical() + (math.rad(-vert_deg) * weapon._recoil_factor)
+		look_hori = player:get_look_horizontal() + (math.rad(hori_deg) * weapon._recoil_factor)
+	end
+	player:set_look_vertical(look_pitch)
+	player:set_look_horizontal(look_hori)
+end
+
+function solarsail.util.functions.apply_explosion_recoil(player, multiplier, origin)
+	local ppos = player:get_pos()
+	ppos.y = ppos.y + 0.5
+	local result_vel = vector.multiply(vector.direction(origin, ppos), multiplier)
+	player:add_velocity(result_vel)
+end
+
+function solarsail.util.functions.pos_to_dist(pos_1, pos_2)
+	local res = {}
+	res.x = (pos_1.x - pos_2.x)
+	res.y = (pos_1.y - pos_2.y)
+	res.z = (pos_1.z - pos_2.z)
+	return math.sqrt(res.x*res.x + res.y*res.y + res.z*res.z)
+end
+
+function weapons.calc_block_damage(nodedef, weapon, target_pos, pointed)
+	if nodedef == nil then
+	elseif nodedef.name == "air" then
+		return 0, "air", nil
+	elseif nodedef.name == "ignore" then
+		return 0, "air", nil
+	elseif nodedef._health == nil then
+		weapons.spray_particles(pointed, nodedef, target_pos)
+		return 0, "air", nil
+	elseif nodedef._takes_damage == nil then
+		local nodedamage
+		if weapon._block_chance == nil then
+			nodedamage = nodedef._health - weapon._break_hits
+		elseif math.random(1, 100) < 25 then
+			nodedamage = nodedef._health - weapon._break_hits
+		else
+			nodedamage = nodedef._health
+		end
+
+		if nodedamage < 1 then
+			weapons.spray_particles(pointed, nodedef, target_pos)
+			return 0, "air", nil
+		else
+			weapons.spray_particles(pointed, nodedef, target_pos)
+			return nodedamage, nodedef._name.."_"..nodedamage, nil
+		end
+	else
+		weapons.spray_particles(pointed, nodedef, target_pos)
+		return 0, nodedef.name, false
+	end
+end
+
+function weapons.spray_particles(pointed, nodedef, target_pos)
+	local npos, npos_floor
+	if pointed == nil then
+		npos = table.copy(target_pos)
+		npos_floor = table.copy(target_pos)
+		npos_floor.x = math.floor(npos_floor.x)
+		npos_floor.y = math.floor(npos_floor.y)
+		npos_floor.z = math.floor(npos_floor.z)
+	else
+		npos = table.copy(pointed.intersection_point)
+		npos_floor = table.copy(pointed.under)
+	end
+	
+	if nodedef.tiles == nil then return end
+	minetest.add_particlespawner({
+		amount = math.random(8, 12),
+		time = 0.03,
+		texture = nodedef.tiles[1],
+		node = {name=minetest.get_node(npos_floor).name},
+		collisiondetection = true,
+		collision_removal = false,
+		object_collision = false,
+		vertical = false,
+		minpos = vector.new(npos.x-0.05,npos.y-0.05,npos.z-0.05),
+		maxpos = vector.new(npos.x+0.05,npos.y+0.05,npos.z+0.05),
+		minvel = vector.new(-1, -1, -1),
+		maxvel = vector.new(1, 1, 1),
+		minacc = vector.new(0,-5,0),
+		maxacc = vector.new(0,-5,0),
+		minsize = 0.95,
+		maxsize = 1.15,
+		minexptime = 1,
+		maxexptime = 3
+	})
+end
+
+function weapons.reset_health(player)
+	local pname = player:get_player_name()
+	weapons.player_list[pname].hp = weapons.player_list[pname].hp_max
+	weapons.hud.update_vignette(player)
+	minetest.close_formspec(pname, "death")
+end
+
+function weapons.respawn_player(player, respawn)
+	local pname = player:get_player_name()
+	local x, y, z = 0
+	local blu = 192-42
+	if weapons.player_list[pname].team == "red" then
+		x = math.random(168, 176)
+		z = math.random(168, 176)
+		y = weapons.red_base_y
+		if y == nil then y = 2 end
+	else
+		x = math.random(-147, -139)
+		z = math.random(-147, -139)
+		y = weapons.blu_base_y
+		if y == nil then y = 2 end
+	end
+
+	player:set_pos({x=x, y=y+0.5, z=z})
+	if respawn then
+		weapons.set_ammo(player, weapons.player_list[pname].class)
+		weapons.clear_inv(player)
+		weapons.add_class_items(player, weapons.player_list[pname].class)
+	end
+	weapons.hud.remove_blackout(player)
+end
+
+function weapons.kill_player(player, target_player, weapon, dist)
+	weapons.update_killfeed(player, target_player, weapon, dist)
+	weapons.player_list[target_player:get_player_name()].hp = 0
+	weapons.player.cancel_reload(target_player)
+	weapons.hud.blackout(target_player)
+	minetest.after(4.9, weapons.respawn_player, target_player, true)
+	minetest.after(5, weapons.reset_health, target_player)
+end

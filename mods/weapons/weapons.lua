@@ -34,6 +34,25 @@ function weapons.register_weapon(name, creator_allowed, def)
 	minetest.register_node(name, node)
 end
 
+function weapons.energy_overheat(player, weapon, wield, keypressed)
+	-- Energy weapons don't have manually started reloads
+	if keypressed then return end
+	local pname = player:get_player_name()
+	if not weapons.is_reloading[pname][wield] then
+		weapons.is_reloading[pname][wield] = true
+
+		minetest.after(weapon._reload, weapons.finish_energy_weapon, player, weapon, wield, false)
+
+		minetest.sound_play({name=weapon._reload_sound},
+			{object=player, max_hear_distance=8, gain=0.15})
+		if weapon._no_reload_hud then
+		else
+			player:hud_change(weapons.player_huds[pname].ammo.reloading, 
+				"text", "reloading.png")
+		end
+	end
+end
+
 function weapons.veteran_reload(player, weapon, wield, keypressed)
 	local pname = player:get_player_name()
 	if weapon == nil then
@@ -103,6 +122,22 @@ function weapons.finish_magazine(player, weapon, wieldname, oneic)
 			weapons.player_list[pname][ammo] =
 				weapons.player_list[pname][ammo.."_max"]
 		end
+
+		-- Avoid sending HUD updates unless needed
+		if weapon._no_reload_hud then
+		else
+			player:hud_change(weapons.player_huds[pname].ammo.reloading,
+				"text", "transparent.png")
+		end
+	end
+end
+
+function weapons.finish_energy_weapon(player, weapon, wieldname, oneic)
+	local pname = player:get_player_name()
+	if weapons.is_reloading[pname] == nil then
+		return
+	elseif weapons.is_reloading[pname][wieldname] then
+		weapons.is_reloading[pname][wieldname] = false
 
 		-- Avoid sending HUD updates unless needed
 		if weapon._no_reload_hud then
@@ -456,3 +491,44 @@ function weapons.place_block(player, weapon)
 		end
 	end
 end
+
+local player_cooldown_timer = {}
+
+-- Handle energy weapon cooldowns:
+minetest.register_globalstep(function(dtime)
+	for _, player in ipairs(minetest.get_connected_players()) do
+		local pname = player:get_player_name()
+		local weapon = minetest.registered_nodes[player:get_wielded_item():get_name()]
+
+		if player_cooldown_timer[pname] == nil then
+			player_cooldown_timer[pname] = 0 - dtime
+		end
+
+		if weapon == nil then
+		elseif weapon._is_energy == nil then
+		elseif weapon._is_energy then
+			local ammo = weapon._ammo_type
+			if not solarsail.controls.player[pname].LMB then
+				if player_cooldown_timer[pname] > 0.06 then
+					local cng = math.floor(weapons.player_list[pname][ammo] * weapon._cool_rate) - 1
+					if cng < 0 then cng = 0 end
+					weapons.player_list[pname][ammo] = cng
+					player_cooldown_timer[pname] = 0
+				else
+					player_cooldown_timer[pname] = player_cooldown_timer[pname] + dtime
+				end
+			elseif weapons.is_reloading[pname][player:get_wielded_item():get_name()] then
+				if player_cooldown_timer[pname] > 0.06 then
+					local cng = math.floor(weapons.player_list[pname][ammo] * weapon._cool_rate) - 1
+					if cng < 0 then cng = 0 end
+					weapons.player_list[pname][ammo] = cng
+					player_cooldown_timer[pname] = 0
+				else
+					player_cooldown_timer[pname] = player_cooldown_timer[pname] + dtime
+				end
+			elseif solarsail.controls.player[pname].LMB then
+				player_cooldown_timer[pname] = 0
+			end
+		end
+	end
+end)
