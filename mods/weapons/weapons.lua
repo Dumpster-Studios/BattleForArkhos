@@ -509,7 +509,7 @@ minetest.register_globalstep(function(dtime)
 		elseif weapon._is_energy then
 			local ammo = weapon._ammo_type
 			if not solarsail.controls.player[pname].LMB then
-				if player_cooldown_timer[pname] > 0.06 then
+				if player_cooldown_timer[pname] > weapon._cool_timer then
 					local cng = math.floor(weapons.player_list[pname][ammo] * weapon._cool_rate) - 1
 					if cng < 0 then cng = 0 end
 					weapons.player_list[pname][ammo] = cng
@@ -518,7 +518,7 @@ minetest.register_globalstep(function(dtime)
 					player_cooldown_timer[pname] = player_cooldown_timer[pname] + dtime
 				end
 			elseif weapons.is_reloading[pname][player:get_wielded_item():get_name()] then
-				if player_cooldown_timer[pname] > 0.06 then
+				if player_cooldown_timer[pname] > weapon._cool_timer then
 					local cng = math.floor(weapons.player_list[pname][ammo] * weapon._cool_rate) - 1
 					if cng < 0 then cng = 0 end
 					weapons.player_list[pname][ammo] = cng

@@ -19,7 +19,10 @@ if true then
 	wpd = nil
 end
 
--- Special, load the additions to the solarsail global before anything else.
+-- Handle world persistent login as we delete worlds between games.
+dofile(minetest.get_modpath("weapons").."/auth.lua")
+
+-- Special usecase, load the additions to the solarsail global before anything else.
 -- Ideally, this should be at the bottom with the others, but we make do.
 dofile(minetest.get_modpath("weapons").."/functions.lua")
 
@@ -71,7 +74,7 @@ end
 function core.send_leave_message(player_name, timed_out)
 	local msg = weapons.team_colourize(minetest.get_player_by_name(player_name), weapons.player_data[player_name].nick) .. " left the game"
 	if timed_out then
-		msg = msg .. ", due to network error."
+		msg = msg .. ", due to network interruption or error."
 	else
 		msg = msg .. "."
 	end
@@ -102,8 +105,40 @@ function core.get_server_status(player_name, joined)
 		if num < #nplayers then
 			status = status .. weapons.team_colourize(nplayers[num].user, nplayers[num].nick) .. ", "
 		else
-			status = status .. weapons.team_colourize(nplayers[num].user, nplayers[num].nick) .. "."
+			status = status .. weapons.team_colourize(nplayers[num].user, nplayers[num].nick) .. ".\n"
 		end
+	end
+
+	if solarsail.avg_dtime == nil or solarsail.avg_dtime == 0 then
+		local _chance = math.random(1, 100)
+		local _msg = "Excuse me, but why are you launching the server as a client?"
+		print(_chance)
+		if _chance < 11 then
+			-- https://discord.com/channels/369122544273588224/369122544273588226/807084993854701608
+			-- From @ElCeejus
+			_msg = "Excuse me bruv? Why are yeh laoonching Minetaest hes a client yeh? Kinda schtewpid innit?"
+		end
+		status = status .. minetest.colorize("#ff0000", _msg)
+	else
+		status = status .. "Average Server Lag: " ..
+			minetest.colorize(
+				solarsail.util.functions.blend_colours(
+					solarsail.avg_dtime,
+					0.03,
+					0.12,
+					"#00ff00",
+					"#ff0000"
+				),
+				string.format("%.2f", tostring(solarsail.avg_dtime)) .. "s"
+			)
+	end
+
+	if weapons.auth[player_name] == nil then
+	elseif weapons.auth[player_name].last_login == nil then
+	else
+		local date = os.date("%Y/%m/%d %H:%M:%S", weapons.auth[player_name].last_login)
+		status = status .. "\nLast Join: " ..
+			minetest.colorize(weapons.teams.no_team, date)
 	end
 	return status
 end
@@ -297,9 +332,11 @@ dofile(minetest.get_modpath("weapons").."/weapons/blocks.lua")
 dofile(minetest.get_modpath("weapons").."/weapons/assault_rifle.lua")
 dofile(minetest.get_modpath("weapons").."/weapons/burst_rifle.lua")
 dofile(minetest.get_modpath("weapons").."/weapons/sniper_rifle.lua")
-dofile(minetest.get_modpath("weapons").."/weapons/scout_rifle.lua")
+dofile(minetest.get_modpath("weapons").."/weapons/veteran_rifle.lua")
 dofile(minetest.get_modpath("weapons").."/weapons/auto_shotgun.lua")
 dofile(minetest.get_modpath("weapons").."/weapons/plasma_autorifle.lua")
+dofile(minetest.get_modpath("weapons").."/weapons/light_machine_gun.lua")
+dofile(minetest.get_modpath("weapons").."/weapons/minigun.lua")
 
 --dofile(minetest.get_modpath("weapons").."/weapons/railgun.lua")
 --dofile(minetest.get_modpath("weapons").."/weapons/smg.lua")

@@ -112,7 +112,8 @@ local function get_ammo_appearances(player, weapon)
 	local over_string = "hud_bar_overlay.png^[opacity:127"
 	local weapon = minetest.registered_nodes[player:get_wielded_item():get_name()]
 	local is_thermal = false
-	if weapon._is_energy == nil then
+	if weapon == nil then
+	elseif weapon._is_energy == nil then
 	elseif weapon._is_energy then
 		is_thermal = true
 	end

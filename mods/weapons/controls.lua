@@ -81,8 +81,10 @@ local function conv_heat_to_rpm(weapon, player)
 	local mult = weapon._accel_mult or 1
 	if current_heat == nil then
 		return 1
-	elseif current_heat > 0 then
-		return (current_heat/100) + mult
+	elseif current_heat > 99 then
+		return 1
+	elseif current_heat < 100 then
+		return solarsail.util.functions.remap(current_heat, 0, 100, 1, weapon._accel_mult)
 	else
 		return 1
 	end

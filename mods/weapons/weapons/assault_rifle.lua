@@ -164,7 +164,7 @@ Range 150 nodes.]],
 	_spread_aim = 0.5,
 
 	_break_hits = 2,
-	_block_chance = 50,
+	_block_chance = 85,
 
 	-- Arm Animations + Arm visual settings;
 	_anim = {

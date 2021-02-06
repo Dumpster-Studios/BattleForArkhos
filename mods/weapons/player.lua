@@ -48,7 +48,9 @@ base_class.items = {
 	"weapons:sniper_rifle",
 	"weapons:veteran_rifle",
 	"weapons:pump_shotgun",
+	"weapons:light_machine_gun",
 	"weapons:plasma_autorifle",
+	"weapons:minigun",
 	"weapons:pickaxe",
 	"core:team_neutral"
 }

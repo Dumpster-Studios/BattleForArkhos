@@ -1,4 +1,4 @@
-local wep_rpm = 400
+local wep_rpm = 325
 local shots_used = 1
 
 local plas_ent = {
@@ -19,40 +19,19 @@ local plas_ent = {
 local function dmg_block(pos, weapon)
 	local damage, node, result =
 		weapons.calc_block_damage(minetest.registered_nodes[minetest.get_node(pos).name], weapon, pos)
-	minetest.set_node(pos, {name=node})
+	local p2 = minetest.get_node(pos).param2
+	minetest.set_node(pos, {name=node, param2=p2})
 end
 
 function plas_ent:collide(self, moveresult)
 	local pos = self.object:get_pos()
-	--[[
+
 	local pos_block
 	if moveresult.collisions[1] == nil then
-		pos_block = table.copy(self.object:get_pos())
-		pos_block.x = math.floor(pos_block.x)
-		pos_block.y = math.floor(pos_block.y)
-		pos_block.z = math.floor(pos_block.z)
-	elseif moveresult.collisions[1].type == "object" then
-		if moveresult.collisions[1].object:get_pos() ~= nil then
-			pos_block = table.copy(moveresult.collisions[1].object:get_pos())
-			pos_block.x = math.floor(pos_block.x)
-			pos_block.y = math.floor(pos_block.y)
-			pos_block.z = math.floor(pos_block.z)
-		else
-			pos_block = table.copy(pos)
-			pos_block.x = math.floor(pos_block.x)
-			pos_block.y = math.floor(pos_block.y)
-			pos_block.z = math.floor(pos_block.z)
-		end
 	elseif moveresult.collisions[1].type == "node" then
 		pos_block = table.copy(moveresult.collisions[1].node_pos)
-	else
-		pos_block = table.copy(pos)
-		pos_block.x = math.floor(pos_block.x)
-		pos_block.y = math.floor(pos_block.y)
-		pos_block.z = math.floor(pos_block.z)
+		dmg_block(pos_block, minetest.registered_nodes["weapons:plasma_autorifle"])
 	end
-
-	]]
 	
 	if self._player_ref == nil then 
 		self.object:remove()
@@ -60,7 +39,6 @@ function plas_ent:collide(self, moveresult)
 	end
 	
 	local weapon = minetest.registered_nodes["weapons:plasma_autorifle"]
-	--dmg_block(pos_block, weapon)
 	
 	for _, player in ipairs(minetest.get_connected_players()) do
 		local ppos = player:get_pos()
@@ -152,8 +130,9 @@ weapons.register_weapon("weapons:plasma_autorifle", true,
 	_ammo_type = "plasma_autorifle",
 	_is_energy = true,
 	_heat_accelerated = true,
-	_accel_mult = 1.75,
+	_accel_mult = 3.5,
 	_cool_rate = 0.95,
+	_cool_timer = 0.075,
 	_slot = "primary",
 	_localisation = {
 		itemstring = "weapons:plasma_autorifle",
@@ -202,6 +181,8 @@ Range 150 nodes.]],
 	_recoil_factor = 0.8/1.5,
 	_recoil_aim_factor = 0.5/1.5,
 	
+	_break_hits = 1,
+	_block_chance = 75,
 	_spread = 6.5,
 	_spread_aim = 0.5,
 

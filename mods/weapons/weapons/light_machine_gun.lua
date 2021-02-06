@@ -1,6 +1,3 @@
-local wep_rpm = 65
-local shots_used = 3
-
 local function add_extras(player)
 	local ldir = player:get_look_dir()
 	local ppos = vector.add(player:get_pos(), vector.new(0, 1.2+ldir.y/3.5, 0))
@@ -21,67 +18,69 @@ local function add_extras(player)
 	ent:set_velocity(vector.add(pvel, vel))
 end
 
-weapons.register_weapon("weapons:burst_rifle", true,
+local wep_rpm = 420
+local shots_used = 1
+
+weapons.register_weapon("weapons:light_machine_gun", true,
 {
 	-- Config
 	_type = "gun",
-	_ammo_type = "burst_rifle",
+	_ammo_type = "lmg",
 	_slot = "primary",
 	_localisation = {
-		itemstring = "weapons:burst_rifle",
-		name = "Burst Rifle",
+		itemstring = "weapons:light_machine_gun",
+		name = "Light Machine Gun",
 		tooltip =
-[[A standard burst rifle. Good at short to medium range.
+[[A light machine gun. Good at suppressive fire.
 
 Stats:
 
-25 Damage per shot.
-2.85 second reload.
-Unaimed spread +- 3.75 nodes at maximum range.
-Aimed spread +- 0.5 nodes at maximum range.
-Range 150 nodes.]],
+20 Damage.
+6.65 second reload.
+Unaimed spread +- 15 nodes at maximum range.
+Aimed spread +- 2 nodes at maximum range.
+Range 125 nodes.]],
 	},
 
 	-- HUD / Visual
 	_tracer = "ar",
-	_name = "burst_rifle",
-	_ammo_bg = "bullet_bg",
+	_name = "light_machine_gun",
 	_crosshair = "assault_crosshair.png",
-	_crosshair_aim = "railgun_crosshair.png",
+	_crosshair_aim = "assault_crosshair.png",
 	_fov_mult = 0,
-	_fov_mult_aim = 0.5,
+	_fov_mult_aim = 0.6,
 	_min_arm_angle = -45,
 	_max_arm_angle = 75,
 	_arm_angle_offset = 0,
 	-- Sounds
-	_firing_sound = "burst_rifle",
+	_firing_sound = "ass_rifle_fire",
 	_reload_sound = "ass_rifle_reload",
 	_casing = "Armature_Casing",
 	
 	-- Base Stats:
 	_pellets = 1,
-	_mag = 24,
+	_mag = 100,
 	_rpm = wep_rpm,
-	_reload = 2.85,
+	_reload = 6.65,
 	_speed = 1200,
-	_range = 150,
-	_damage = 25,
+	_range = 125,
+	_damage = 10,
 	_movespeed = 0.95,
 	_movespeed_aim = 0.45,
 	_shots_used = shots_used,
 
-	_recoil = 2.5,
-	_recoil_vert_min = 1,
-	_recoil_vert_max = 2.25,
-	_recoil_hori = 3,
-	_recoil_factor = 0.8/2,
-	_recoil_aim_factor = 0.5/2,
+	_recoil = 1.5,
+	_recoil_vert_min = 2,
+	_recoil_vert_max = 4.25,
+	_recoil_hori = 6,
+	_recoil_factor = 0.8,
+	_recoil_aim_factor = 0.5,
 	
-	_spread = 3.75,
-	_spread_aim = 0.5,
+	_spread = 15,
+	_spread_aim = 2,
 
-	_break_hits = 2,
-	_block_chance = 75,
+	_break_hits = 1,
+	_block_chance = 90,
 
 	-- Arm Animations + Arm visual settings;
 	_anim = {
@@ -95,12 +94,8 @@ Range 150 nodes.]],
 		mesh = "assault_arms.x",
 		texture = "assault_rifle.png",
 	},
-	on_fire = function(player, weapon)
-		for i=1, shots_used do
-			minetest.after(((((60/wep_rpm)/shots_used)-0.25)*i), weapons.raycast_bullet, player, weapon)
-		end
-	end,
-	on_reload = weapons.magazine_reload,
+	on_fire = weapons.raycast_bullet,
 	on_fire_visual = add_extras,
+	on_reload = weapons.magazine_reload,
 	bullet_on_hit = weapons.bullet_on_hit,
 })

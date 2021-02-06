@@ -1,0 +1,1 @@
+This file is just to ensure Git properly includes this directory as Minetest will crash on attempting to access a non-existent folder.

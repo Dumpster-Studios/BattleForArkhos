@@ -13,6 +13,72 @@ function weapons.get_nick(player)
 	end
 end
 
+--[[
+	solarsail.util.functions.convert_from_hex()
+
+	input = ColorSpec
+	returns three variables red, green and blue in base 10 values.
+]]--
+
+function solarsail.util.functions.convert_from_hex(input)
+	local r, g, b = input:match("^#(%x%x)(%x%x)(%x%x)")
+	return tonumber(r, 16), tonumber(g, 16), tonumber(b, 16)
+end
+
+--[[
+	solarsail.util.functions.lerp()
+
+	var_a = input number to blend from. (at ratio 0)
+	var_b = input number to blend to. (at ratio 1)
+	returns the blended value depending on ratio.
+]]--
+
+function solarsail.util.functions.lerp(var_a, var_b, ratio)
+	return (1-ratio)*var_a + (ratio*var_b)
+end
+
+--[[
+	solarsail.util.functions.remap()
+	
+	val = Input value
+	min_val = minimum value of your expected range
+	max_val = maximum value of your expected range
+	min_map = minimum value of your remapped range
+	max_map = maximum value of your remapped range
+	returns a value between min_map and max_map based on where val is relative to min_val and max_val.
+]]
+
+function solarsail.util.functions.remap(val, min_val, max_val, min_map, max_map)
+	return (val-min_val)/(max_val-min_val) * (max_map-min_map) + min_map
+end
+
+--[[
+	solarsail.util.functions.blend_colours()
+
+	val = Input Value
+	min_val = Minimum value (values less than this are capped)
+	max_val = Maximum value (values more than this are capped)
+	min_col = ColorSpec defining the colour of the minimum value.
+	returns a ColorSpec blended or capped as one of the two input colours.
+]]--
+
+function solarsail.util.functions.blend_colours(val, min_val, max_val, min_col, max_col)
+	if val <= min_val then
+		return min_col
+	elseif val >= max_val then
+		return max_col
+	end
+
+	local min_r, min_g, min_b = solarsail.util.functions.convert_from_hex(min_col)
+	local max_r, max_g, max_b = solarsail.util.functions.convert_from_hex(max_col)
+	
+	local blend = solarsail.util.functions.remap(val, min_val, max_val, 0, 1)
+	local res_r = solarsail.util.functions.lerp(min_r, max_r, blend)
+	local res_g = solarsail.util.functions.lerp(min_g, max_g, blend)
+	local res_b = solarsail.util.functions.lerp(min_b, max_b, blend)
+	return minetest.rgba(res_r, res_g, res_b)
+end
+
 function solarsail.util.functions.y_direction(rads, recoil)
 	return math.sin(rads) * recoil
 end

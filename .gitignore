@@ -1,10 +1,14 @@
+## Specially ignored directories:
+mods/test
+mods/weapons/sounds
+mods/persistence/db/weapons_player_auth.prs
+mods/persistence/db/weapons_player_data.prs
+
 ### macOS ###
 *.DS_Store
 .AppleDouble
 .LSOverride
 
-mods/test
-mods/weapons/sounds
 
 # Icon must end with two \r
 Icon
