@@ -185,7 +185,7 @@ weapons.register_weapon("weapons:minigun", true,
 Nothing saturates a target better.
 Stats:
 
-10 Damage.
+5 Damage.
 Infinite Ammo!.
 Unaimed spread +- 8 nodes at maximum range.
 Aimed spread +- 1 nodes at maximum range.
@@ -214,16 +214,16 @@ Range 125 nodes.]],
 	_reload = 6.65,
 	_speed = 1200,
 	_range = 125,
-	_damage = 10,
-	_movespeed = 0.95,
-	_movespeed_aim = 0.45,
+	_damage = 5,
+	_movespeed = 0.25,
+	_movespeed_aim = 0.05,
 	_shots_used = shots_used,
 
 	_recoil = 1.5,
 	_recoil_vert_min = 0.2,
-	_recoil_vert_max = 3.5,
+	_recoil_vert_max = 5.5,
 	_recoil_hori = 0.2,
-	_recoil_hori_max = 5.5,
+	_recoil_hori_max = 7.5,
 	_recoil_factor = 0.8,
 	_recoil_aim_factor = 0.5,
 	

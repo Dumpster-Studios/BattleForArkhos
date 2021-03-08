@@ -6,17 +6,15 @@ function weapons.register_weapon(name, creator_allowed, def)
 	local node = table.copy(def)
 	node.drawtype = "glasslike"
 	node.tiles = {"transparent.png"}
-	node.range = 1
+	node.range = 0
 	node.node_placement_prediction = ""
 	
 	if creator_allowed then
 		if type(node._localisation) ~= "table" then
-			error([[Invalid weapon registry: ]]..name..[[._localisation needs to be a table.
-			]])
+			error([[Invalid weapon registry: ]]..name..[[._localisation needs to be a table.]])
 		end
 		if node._slot == nil then
-			error([[
-				Invalid weapon registry: ]]..name..[[._slot does not exist.]])
+			error([[Invalid weapon registry: ]]..name..[[._slot does not exist.]])
 			elseif node._slot == "grenade" then
 				weapons.creator.register_weapon(node._localisation, node._slot)
 			elseif node._slot == "primary" then
@@ -24,14 +22,14 @@ function weapons.register_weapon(name, creator_allowed, def)
 			elseif node._slot == "secondary" then
 				weapons.creator.register_weapon(node._localisation, node._slot)
 			else
-				error([[
-					Invalid weapon registry: ]]..name..[[._slot needs to be one of the following:
+				error([[Invalid weapon registry: ]]..name..[[._slot needs to be one of the following:
 					"primary" "secondary" or "grenade".]])
 			end
 		end
 	node.on_place = no_drop_place
 	node.on_drop = no_drop_place
 	minetest.register_node(name, node)
+	weapons.registry[name] = node
 end
 
 function weapons.energy_overheat(player, weapon, wield, keypressed)
@@ -63,7 +61,7 @@ function weapons.veteran_reload(player, weapon, wield, keypressed)
 				weapons.is_reloading[pname][wield] = true
 				minetest.after(weapon._reload, weapons.finish_magazine, player, weapon, wield, false)
 				minetest.sound_play({name=weapon._reload_sound},
-					{object=player, max_hear_distance=8, gain=0.15})
+					{object=player, max_hear_distance=8, gain=0.32})
 				if weapon._no_reload_hud then
 				else
 					player:hud_change(weapons.player_huds[pname].ammo.reloading, 

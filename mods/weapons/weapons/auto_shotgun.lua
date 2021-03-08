@@ -43,21 +43,21 @@ function casing_ent:on_step(dtime, moveresult)
 			velocity.y = old_vel.y
 			velocity.z = old_vel.z
 			minetest.sound_play({name = "ar_casing"},
-				{object=self.object, max_hear_distance=8, gain=0.15, pitch=math.random(85, 115)/100}, true)
+				{object=self.object, max_hear_distance=8, gain=0.035, pitch=math.random(85, 115)/100}, true)
 		elseif moveresult.collisions[1].axis == "y" then
 			velocity.x = old_vel.x
 			velocity.y = -(old_vel.y * bounce_factor)
 			velocity.z = old_vel.z
 			if math.abs(old_vel.y) > 0.38 then
 				minetest.sound_play({name = "ar_casing"},
-					{object=self.object, max_hear_distance=8, gain=0.15, pitch=math.random(85, 115)/100}, true)
+					{object=self.object, max_hear_distance=8, gain=0.035, pitch=math.random(85, 115)/100}, true)
 			end
 		elseif moveresult.collisions[1].axis == "z" then
 			velocity.x = old_vel.x
 			velocity.y = old_vel.y
 			velocity.z = -(old_vel.z * bounce_factor)
 			minetest.sound_play({name = "ar_casing"},
-				{object=self.object, max_hear_distance=8, gain=0.15, pitch=math.random(85, 115)/100}, true)
+				{object=self.object, max_hear_distance=8, gain=0.035, pitch=math.random(85, 115)/100}, true)
 		end
 
 		-- Rotate object for rolling and shit:

@@ -174,7 +174,7 @@ function weapons.calc_block_damage(nodedef, weapon, target_pos, pointed)
 		local nodedamage
 		if weapon._block_chance == nil then
 			nodedamage = nodedef._health - weapon._break_hits
-		elseif math.random(1, 100) < 25 then
+		elseif math.random(1, 100) < weapon._block_chance then
 			nodedamage = nodedef._health - weapon._break_hits
 		else
 			nodedamage = nodedef._health

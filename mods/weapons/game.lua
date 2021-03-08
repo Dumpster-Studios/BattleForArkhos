@@ -97,9 +97,7 @@ local function add_global_waypoint(pos, id, name, color)
 		})
 	end
 end
-
 weapons.add_global_waypoint = add_global_waypoint
-
 
 local function remove_global_waypoint(id)
 	for _, player in ipairs(minetest.get_connected_players()) do
@@ -110,7 +108,6 @@ local function remove_global_waypoint(id)
 		end
 	end
 end
-
 weapons.remove_global_waypoint = remove_global_waypoint
 
 local function add_team_waypoint(pos, id, name, color, team)

@@ -5,12 +5,15 @@
 -- global stuff.
 
 weapons = {}
-weapons.player = {}
-weapons.player_list = {}
-weapons.player_data = {}
-weapons.is_reloading = {}
-weapons.default_eye_height = 1.58	
-weapons.status = {}
+weapons.status = {} -- Server status info
+weapons.modchannels = {} -- Per-player mod channels, stored by player name
+weapons.registry = {} -- Read only weapons thing
+weapons.player = {} -- Some functions
+weapons.player_list = {} -- Current game related data
+weapons.player_data = {} -- Save data and config
+weapons.is_reloading = {} -- This should be part of player_list
+weapons.default_eye_height = 1.58 -- Defaults
+weapons.default_modchannel = "battleforarkhos_" -- Defaults
 
 -- Handle a one time file load at bootup to ensure data is properly loaded
 if true then
@@ -21,6 +24,7 @@ end
 
 -- Handle world persistent login as we delete worlds between games.
 dofile(minetest.get_modpath("weapons").."/auth.lua")
+dofile(minetest.get_modpath("weapons").."/ban.lua")
 
 -- Special usecase, load the additions to the solarsail global before anything else.
 -- Ideally, this should be at the bottom with the others, but we make do.

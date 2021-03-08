@@ -18,7 +18,7 @@ local function add_extras(player)
 	ent:set_velocity(vector.add(pvel, vel))
 end
 
-local wep_rpm = 420
+local wep_rpm = 465
 local shots_used = 1
 
 weapons.register_weapon("weapons:light_machine_gun", true,
@@ -35,7 +35,7 @@ weapons.register_weapon("weapons:light_machine_gun", true,
 
 Stats:
 
-20 Damage.
+10 Damage.
 6.65 second reload.
 Unaimed spread +- 15 nodes at maximum range.
 Aimed spread +- 2 nodes at maximum range.
@@ -53,7 +53,7 @@ Range 125 nodes.]],
 	_max_arm_angle = 75,
 	_arm_angle_offset = 0,
 	-- Sounds
-	_firing_sound = "ass_rifle_fire",
+	_firing_sound = "lmg_fire",
 	_reload_sound = "ass_rifle_reload",
 	_casing = "Armature_Casing",
 	
@@ -65,8 +65,8 @@ Range 125 nodes.]],
 	_speed = 1200,
 	_range = 125,
 	_damage = 10,
-	_movespeed = 0.95,
-	_movespeed_aim = 0.45,
+	_movespeed = 0.5,
+	_movespeed_aim = 0.15,
 	_shots_used = shots_used,
 
 	_recoil = 1.5,

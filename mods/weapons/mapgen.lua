@@ -35,18 +35,24 @@ end
 
 local function generate_base_schem()
 	--42 blocks from map edge 
-	generate_base_at(
-		{x=red, y=weapons.red_base_y-2, z=red}, 
-		{x=165, y=weapons.red_base_y-2, z=165}, 
-		{x=171, y=weapons.red_base_y+12, z=171}
-	)
-	-- 42 blocks from map edge
-	generate_base_at(
-		{x=-blu, y=weapons.blu_base_y-2, z=-blu}, 
-		{x=-150, y=weapons.blu_base_y-2, z=-150}, 
-		{x=-144, y=weapons.blu_base_y+12, z=-144}
-	)
+	if weapons.red_base_y == nil then
+	else
+		generate_base_at(
+			{x=red, y=weapons.red_base_y-2, z=red}, 
+			{x=165, y=weapons.red_base_y-2, z=165}, 
+			{x=171, y=weapons.red_base_y+12, z=171}
+		)
+	end
 
+	if weapons.blue_base_y == nil then
+	else
+		-- 42 blocks from map edge
+		generate_base_at(
+			{x=-blu, y=weapons.blu_base_y-2, z=-blu}, 
+			{x=-150, y=weapons.blu_base_y-2, z=-150}, 
+			{x=-144, y=weapons.blu_base_y+12, z=-144}
+		)
+	end
 end
 
 minetest.after(1, set_base_y)

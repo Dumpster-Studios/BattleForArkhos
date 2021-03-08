@@ -43,21 +43,21 @@ function casing_ent:on_step(dtime, moveresult)
 			velocity.y = old_vel.y
 			velocity.z = old_vel.z
 			minetest.sound_play({name = "ar_casing"},
-				{object=self.object, max_hear_distance=8, gain=0.15, pitch=math.random(85, 115)/100}, true)
+				{object=self.object, max_hear_distance=8, gain=0.035, pitch=math.random(85, 115)/100}, true)
 		elseif moveresult.collisions[1].axis == "y" then
 			velocity.x = old_vel.x
 			velocity.y = -(old_vel.y * bounce_factor)
 			velocity.z = old_vel.z
 			if math.abs(old_vel.y) > 0.38 then
 				minetest.sound_play({name = "ar_casing"},
-					{object=self.object, max_hear_distance=8, gain=0.15, pitch=math.random(85, 115)/100}, true)
+					{object=self.object, max_hear_distance=8, gain=0.035, pitch=math.random(85, 115)/100}, true)
 			end
 		elseif moveresult.collisions[1].axis == "z" then
 			velocity.x = old_vel.x
 			velocity.y = old_vel.y
 			velocity.z = -(old_vel.z * bounce_factor)
 			minetest.sound_play({name = "ar_casing"},
-				{object=self.object, max_hear_distance=8, gain=0.15, pitch=math.random(85, 115)/100}, true)
+				{object=self.object, max_hear_distance=8, gain=0.035, pitch=math.random(85, 115)/100}, true)
 		end
 
 		-- Rotate object for rolling and shit:
@@ -120,7 +120,7 @@ Not to be used for popping popcorn.
 Stats:
 
 65 Damage.
-1.5 second reload, can only reload on empty clip.
+3.25 second reload, can only reload on empty clip.
 Unaimed spread +- 5 nodes at maximum range.
 Aimed spread +- 0.1 nodes at maximum range.
 Range 200 nodes.]],
@@ -138,15 +138,15 @@ Range 200 nodes.]],
 	_max_arm_angle = 75,
 	_arm_angle_offset = 0,
 	-- Sounds
-	_firing_sound = "ass_rifle_fire",
-	_reload_sound = "ass_rifle_reload",
+	_firing_sound = "garand_fire",
+	_reload_sound = "garand_reload",
 	_casing = "Armature_Casing",
 	
 	-- Base Stats:
 	_pellets = 1,
 	_mag = 8,
 	_rpm = wep_rpm,
-	_reload = 2.65,
+	_reload = 3.25,
 	_speed = 1200,
 	_range = 250,
 	_damage = 25,

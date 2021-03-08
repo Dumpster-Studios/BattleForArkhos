@@ -159,7 +159,7 @@ Range 150 nodes.]],
 	_arm_angle_offset = 0,
 	-- Sounds
 	_firing_sound = "par_fire",
-	_reload_sound = "par_overheat",
+	_reload_sound = "par_reload",
 	--_casing = "Armature_Casing",
 	
 	-- Base Stats:
