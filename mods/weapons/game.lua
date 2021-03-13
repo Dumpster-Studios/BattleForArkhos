@@ -2,8 +2,7 @@
 -- Author: Jordach
 -- License: Reserved
 
-weapons.game_mode = "ctf"
-weapons.list_of_games = {"ctf", "reverse_ctf", "one_flag", "koth", "assault"}
+weapons.game_mode = "attrition"
 weapons.teams = {}
 weapons.teams.red = 0
 weapons.teams.blue = 0
@@ -25,6 +24,15 @@ weapons.team_names.blue_icon = "blue_team.png"
 
 weapons.flag_pos = {}
 weapons.flag_ref = {}
+
+function weapons.player.get_team(player)
+	local pname = player:get_player_name()
+	if weapons.player_list[pname] == nil then
+		return nil
+	else
+		return weapons.player_list[pname].team
+	end
+end
 
 function weapons.team_colourize(player, message)
 	local pname = player:get_player_name()
@@ -110,6 +118,7 @@ local function remove_global_waypoint(id)
 end
 weapons.remove_global_waypoint = remove_global_waypoint
 
+-- Unused code - but it's useful for something, maybe add a team-wide flaregun?
 local function add_team_waypoint(pos, id, name, color, team)
 	for _, player in ipairs(minetest.get_connected_players()) do
 		local pname = player:get_player_name()
@@ -164,9 +173,9 @@ dofile(minetest.get_modpath("weapons").."/flag_blue.lua")
 dofile(minetest.get_modpath("weapons").."/flag_red.lua")
 
 -- perform flag cleanup on restart
-minetest.clear_objects({mode = "full"})
+--minetest.clear_objects({mode = "full"})
 
-minetest.after(1, minetest.clear_objects, {mode = "full"})
+--minetest.after(1, minetest.clear_objects, {mode = "full"})
 
 local function ctf_spawn_flags()
 	local blu2 = 147-4

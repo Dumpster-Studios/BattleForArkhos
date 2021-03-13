@@ -44,7 +44,8 @@ function plas_ent:collide(self, moveresult)
 		local ppos = player:get_pos()
 		local dist = solarsail.util.functions.pos_to_dist(pos, ppos)
 		if dist < 0.2 then
-			if player == self._player_ref then
+			if  self._player_ref == nil then
+			elseif player == self._player_ref then
 				return
 			else
 				dist = solarsail.util.functions.pos_to_dist(self._player_ref:get_pos(), ppos)
@@ -110,7 +111,7 @@ local function shoot_plasma(player, weapon)
 		else
 			perc = weapons.player_list[pname][ammo]/15
 		end
-		local res = math.floor(weapons.player_list[pname][ammo] + (1*perc)) + 2
+		local res = math.floor(weapons.player_list[pname][ammo] + perc) + 2
 		if res > 99 then
 			res = 100
 			weapon.on_reload(player, weapon, player:get_wielded_item():get_name(), false)

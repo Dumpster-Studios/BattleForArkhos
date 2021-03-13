@@ -21,45 +21,64 @@ end
 local red = 207-42
 local blu = 192-42
 
+local function generate_base_schem()
+	--42 blocks from map edge
+	generate_base_at(
+		{x=red, y=weapons.red_base_y-2, z=red}, 
+		{x=165, y=weapons.red_base_y-2, z=165}, 
+		{x=171, y=weapons.red_base_y+12, z=171}
+	)
+
+	-- 42 blocks from map edge
+	generate_base_at(
+		{x=-blu, y=weapons.blu_base_y-2, z=-blu}, 
+		{x=-150, y=weapons.blu_base_y-2, z=-150}, 
+		{x=-144, y=weapons.blu_base_y+12, z=-144}
+	)
+
+	-- Fix broken things due to caves
+	minetest.after(15, generate_base_schem)
+end
+
+local rattempts = 1
+local battempts = 1
 local function set_base_y()
 	weapons.red_base_y = minetest.get_spawn_level(red, red)
 	weapons.blu_base_y = minetest.get_spawn_level(-blu, -blu)
-
-	if weapons.red_base_y == nil then
-		weapons.red_base_y = 0
-	end
-	if weapons.blu_base_y == nil then
-		weapons.blu_base_y = 0
-	end
-end
-
-local function generate_base_schem()
-	--42 blocks from map edge 
-	if weapons.red_base_y == nil then
+	local rb_found = false
+	local bb_found = false
+	local after
+	if rattempts > 10 then
+		weapons.red_base_y = 192
+		rb_found = true
+	elseif weapons.red_base_y == nil then
+		after = minetest.after(1, set_base_y)
+		rattempts = rattempts + 1
 	else
-		generate_base_at(
-			{x=red, y=weapons.red_base_y-2, z=red}, 
-			{x=165, y=weapons.red_base_y-2, z=165}, 
-			{x=171, y=weapons.red_base_y+12, z=171}
-		)
+		rb_found = true
+	end
+	
+	if battempts > 10 then
+		weapons.blu_base_y = 192
+		bb_found = true
+	elseif weapons.blu_base_y == nil then
+		if after == nil then
+			minetest.after(1, set_base_y)
+		end
+		battempts = battempts + 1
+	else
+		bb_found = true
 	end
 
-	if weapons.blue_base_y == nil then
-	else
-		-- 42 blocks from map edge
-		generate_base_at(
-			{x=-blu, y=weapons.blu_base_y-2, z=-blu}, 
-			{x=-150, y=weapons.blu_base_y-2, z=-150}, 
-			{x=-144, y=weapons.blu_base_y+12, z=-144}
-		)
+	if rb_found and bb_found then
+		minetest.after(2, generate_base_schem)
+		weapons.hud.update_base_waypoint()
+		minetest.chat_send_all("Bases correctly generated, respawns now functional.")
 	end
 end
 
 minetest.after(1, set_base_y)
-minetest.after(2, generate_base_schem)
 
--- Fix broken things due to caves
-minetest.after(15, generate_base_schem)
 
 function plant_options(meshtype, horizontal, height, size)
 	local pshape, bit1, bit2, bit3 = 0, 0, 0, 0

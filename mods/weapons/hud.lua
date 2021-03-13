@@ -485,6 +485,58 @@ function weapons.hud.render_hitmarker(player)
 	minetest.after(0.25, weapons.hud.hide_hitmarker, player)
 end
 
+-- This functions sole existance is to update waypoints if bases fail to generate on-time or properly
+-- Ideally - this funtion should never be called except once or twice.
+function weapons.hud.update_base_waypoint()
+	for _, player in ipairs(minetest.get_connected_players()) do
+		local pname = player:get_player_name()
+		player:hud_remove(weapons.player_huds[pname].misc.red_base)
+		player:hud_remove(weapons.player_huds[pname].misc.blu_base)
+		-- Red Base waypoint
+		local red = 207-35
+		weapons.player_huds[pname].misc.red_base = player:hud_add({
+			hud_elem_type = "waypoint",
+			name = "Red Base",
+			text = "m",
+			number = weapons.teams.red_colour,
+			world_pos = {x=red, y=weapons.red_base_y, z=red}
+		})
+	
+		-- Blue Base waypoint
+		local blu = 147-4
+		weapons.player_huds[pname].misc.blu_base = player:hud_add({
+			hud_elem_type = "waypoint",
+			name = "Blue Base",
+			text = "m",
+			number = weapons.teams.blue_colour,
+			world_pos = {x=-blu, y=weapons.blu_base_y, z=-blu}
+		})
+	end
+end
+
+function weapons.hud.create_base_waypoint(player)
+	local pname = player:get_player_name()
+	-- Red Base waypoint
+	local red = 207-35
+	weapons.player_huds[pname].misc.red_base = player:hud_add({
+		hud_elem_type = "waypoint",
+		name = "Red Base",
+		text = "m",
+		number = weapons.teams.red_colour,
+		world_pos = {x=red, y=weapons.red_base_y, z=red}
+	})
+
+	-- Blue Base waypoint
+	local blu = 147-4
+	weapons.player_huds[pname].misc.blu_base = player:hud_add({
+		hud_elem_type = "waypoint",
+		name = "Blue Base",
+		text = "m",
+		number = weapons.teams.blue_colour,
+		world_pos = {x=-blu, y=weapons.blu_base_y, z=-blu}
+	})
+end
+
 -- All important on_joinplayer things:
 
 minetest.register_on_joinplayer(function(player)
@@ -528,30 +580,36 @@ minetest.register_on_joinplayer(function(player)
 		offset = {x=0, y=-1},
 		z_index = 999
 	})
-	-- Handle user offsets first. (This should only be created here once, and then never occur again.)
-	if weapons.player_data[pname].offsets == nil then
-		weapons.player_data[pname].offsets = {}
-		weapons.player_data[pname].offsets.hp = {x=0, y=0}
-		weapons.player_data[pname].offsets.ammo = {x=0, y=0}
-		weapons.player_data[pname].offsets.score = {x=0, y=0}
-		weapons.player_data[pname].offsets.killfeed = {x=0, y=0}
-		persistence.save_data("weapons_player_data", weapons.player_data)
-		minetest.log("action", pname .. " lacks user settings for definable HUD offsets, creating defaults now.")
-	end
 
-	if weapons.player_data[pname].ammo_scale == nil then
-		-- Should be a weapons.save_player_data() func, but i'm lazy TODO
-		weapons.player_data[pname].ammo_scale = 1
-		persistence.save_data("weapons_player_data", weapons.player_data)
-		minetest.log("action", pname .. " lacked an ammo scaling setting, defaulting to 1.")
+	weapons.hud.create_base_waypoint(player)
+
+	-- Handle user offsets first. (This should only be created here once, and then never occur again.)
+	if weapons.player_data[pname] == nil then
+	else
+		if weapons.player_data[pname].offsets == nil then
+			weapons.player_data[pname].offsets = {}
+			weapons.player_data[pname].offsets.hp = {x=0, y=0}
+			weapons.player_data[pname].offsets.ammo = {x=0, y=0}
+			weapons.player_data[pname].offsets.score = {x=0, y=0}
+			weapons.player_data[pname].offsets.killfeed = {x=0, y=0}
+			persistence.save_data("weapons_player_data", weapons.player_data)
+			minetest.log("action", pname .. " lacks user settings for definable HUD offsets, creating defaults now.")
+		end
+
+		if weapons.player_data[pname].ammo_scale == nil then
+			-- Should be a weapons.save_player_data() func, but i'm lazy TODO
+			weapons.player_data[pname].ammo_scale = 1
+			persistence.save_data("weapons_player_data", weapons.player_data)
+			minetest.log("action", pname .. " lacked an ammo scaling setting, defaulting to 1.")
+		end
+		
+		if weapons.player_data[pname].hp_scale == nil then
+			weapons.player_data[pname].hp_scale = 1
+			persistence.save_data("weapons_player_data", weapons.player_data)
+			minetest.log("action", pname .. " lacked a health scaling setting, defaulting to 1.")
+		end
+
+		scale_ammo(pname, weapons.player_data[pname].ammo_scale, false)
+		scale_health(pname, weapons.player_data[pname].hp_scale, false)
 	end
-	
-	if weapons.player_data[pname].hp_scale == nil then
-		weapons.player_data[pname].hp_scale = 1
-		persistence.save_data("weapons_player_data", weapons.player_data)
-		minetest.log("action", pname .. " lacked a health scaling setting, defaulting to 1.")
-	end
-	
-	scale_ammo(pname, weapons.player_data[pname].ammo_scale, false)
-	scale_health(pname, weapons.player_data[pname].hp_scale, false)
 end)

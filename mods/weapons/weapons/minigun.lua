@@ -18,9 +18,9 @@ function apply_recoil(player, weapon, ammo)
 	local vert_deg, hori_deg, look_pitch, look_hori = 0
 	local pammo = weapons.player_list[pname][ammo]
 	local vert_curve =
-		solarsail.util.functions.remap(pammo, 0, 100, weapon._recoil_vert_min, weapon._recoil_vert_max)
+		solarsail.util.functions.remap(pammo, 0, 100, weapon._recoil_vert_min, weapon._recoil_vert_max) * weapons.master_recoil_mult
 	local hori_curve =
-		solarsail.util.functions.remap(pammo, 0, 100, weapon._recoil_hori, weapon._recoil_hori_max)
+		solarsail.util.functions.remap(pammo, 0, 100, weapon._recoil_hori, weapon._recoil_hori_max) * weapons.master_recoil_mult
 	
 	if math.random(0, 1) == 1 then
 		hori_curve = -hori_curve

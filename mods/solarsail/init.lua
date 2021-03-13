@@ -23,6 +23,7 @@ solarsail.last_dtime = {}
 
 local dtime_steps = 0
 local num_steps = 30*2
+
 minetest.register_globalstep(function(dtime)
 	if dtime_steps == num_steps then
 		local avg = 0
@@ -33,6 +34,7 @@ minetest.register_globalstep(function(dtime)
 		dtime_steps = 0
 		solarsail.last_dtime[1] = dtime
 		--print(string.format("%.4f", tostring(solarsail.avg_dtime)))
+		--minetest.chat_send_all(string.format("%.4f", tostring(solarsail.avg_dtime)))
 	else
 		dtime_steps = dtime_steps + 1
 		solarsail.last_dtime[dtime_steps] = dtime

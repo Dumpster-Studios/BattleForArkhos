@@ -5,6 +5,7 @@
 -- global stuff.
 
 weapons = {}
+weapons.master_recoil_mult = 0.9
 weapons.status = {} -- Server status info
 weapons.modchannels = {} -- Per-player mod channels, stored by player name
 weapons.registry = {} -- Read only weapons thing
@@ -323,6 +324,7 @@ dofile(minetest.get_modpath("weapons").."/weapons.lua")
 dofile(minetest.get_modpath("weapons").."/arms/player_arms.lua")
 dofile(minetest.get_modpath("weapons").."/arms/player_body.lua")
 
+-- More game related data
 dofile(minetest.get_modpath("weapons").."/player.lua")
 dofile(minetest.get_modpath("weapons").."/game.lua")
 dofile(minetest.get_modpath("weapons").."/mapgen.lua")
@@ -332,6 +334,7 @@ dofile(minetest.get_modpath("weapons").."/tracers.lua")
 -- Built in items
 dofile(minetest.get_modpath("weapons").."/weapons/tools.lua")
 dofile(minetest.get_modpath("weapons").."/weapons/blocks.lua")
+
 -- External weapons
 dofile(minetest.get_modpath("weapons").."/weapons/assault_rifle.lua")
 dofile(minetest.get_modpath("weapons").."/weapons/burst_rifle.lua")

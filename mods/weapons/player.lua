@@ -120,6 +120,70 @@ local function set_ammo(player, class)
 	weapons.player_list[pname].blocks_max = base_class.stats.blocks
 end
 
+
+function weapons.get_tex_size(file) -- ported from a fork
+	local file = io.open(file)
+	if file then
+	
+		file:seek("set", 16)
+		local widthstr, heightstr = file:read(4), file:read(4)
+		local width=widthstr:sub(1,1):byte()*16777216+widthstr:sub(2,2):byte()*65536+widthstr:sub(3,3):byte()*256+widthstr:sub(4,4):byte()
+		local height=heightstr:sub(1,1):byte()*16777216+heightstr:sub(2,2):byte()*65536+heightstr:sub(3,3):byte()*256+heightstr:sub(4,4):byte()
+		file:close()
+		return width, height
+	else
+		return nil, nil
+	end
+end
+
+function weapons.get_player_skin(player)
+	local pname = player:get_player_name()
+	local team = weapons.player.get_team(player)
+	if team == nil then
+		return nil
+	else
+		return "skin_1_" .. team .. ".png"
+	end
+end
+
+function weapons.get_player_texture(player)
+	local path = minetest.get_modpath("weapons").."/textures/heads/"
+	local pname = player:get_player_name()
+	local x64_template = "([combine:64x64:0,0="
+	local x16_chop = "([combine:64x16:0,0="
+	local result
+	local player_head = "player_"..pname..".png"
+	local width, height = weapons.get_tex_size(path..player_head)
+	local skin_overlay = weapons.get_player_skin(player)
+
+	minetest.chat_send_all(player_head)
+
+	if skin_overlay == nil then
+		return nil
+	elseif width == nil then
+		local nhead = x16_chop .. "default_player.png" .. ")"
+		return x64_template .. ")^" .. nhead .. "^" .. skin_overlay
+	elseif height == 64 or height == 32 then
+		local nhead = x16_chop .. player_head .. ")"
+		result = x64_template .. ")^" .. nhead .. "^" .. skin_overlay
+	else
+		local nhead = x16_chop .. "default_player.png" .. ")"
+		return x64_template .. ")^" .. nhead .. "^" .. skin_overlay
+	end
+	return result
+end
+
+function weapons.set_player_texture(player)
+	local pname = player:get_player_name()
+	local ptex = weapons.get_player_texture(player)
+	if ptex == nil then
+		minetest.after(1, weapons.set_player_texture, player)
+		return
+	end
+	weapons.player_list[pname].texture = ptex
+	--minetest.chat_send_all(ptex)
+end
+
 weapons.set_ammo = set_ammo
 
 local function set_health(player, class)
@@ -150,7 +214,7 @@ weapons.player_body = {}
 minetest.register_on_joinplayer(function(player)
 	local pname = player:get_player_name()
 	if minetest.get_player_information(pname).formspec_version < 4 then
-		--minetest.kick_player(pname, "Hello ".. pname .. ", please upgrade your client to Minetest 5.4.0 or greater!")
+		minetest.kick_player(pname, "Hello ".. pname .. ", please upgrade your client to Minetest 5.4.0 or greater!")
 	end
 	-- Animation things
 	anim_lock[pname] = false
@@ -174,50 +238,29 @@ minetest.register_on_joinplayer(function(player)
 	weapons.player_list[pname].aim_mode = false
 
 	-- Create a class things
-	weapons.player_list[pname].creator = {}
-	weapons.player_list[pname].creator.points = weapons.creator.base_points
-	weapons.player_list[pname].creator.spent = 0
-	weapons.player_list[pname].creator.hp_base = weapons.creator.hp_base
-	weapons.player_list[pname].creator.speed_base = weapons.creator.speed_base
-	weapons.player_list[pname].creator.jump_base = weapons.creator.jump_base
-	weapons.player_list[pname].creator.weight_base = weapons.creator.weight_base
-	weapons.player_list[pname].creator.blocks = weapons.creator.blocks_base
-	weapons.player_list[pname].creator.perk_one = 1
-	weapons.player_list[pname].creator.perk_two = 1
-	weapons.player_list[pname].creator.weapon_pri = 1
-	weapons.player_list[pname].creator.weapon_sec = 1
-	weapons.player_list[pname].creator.weapon_gre = 1
+	if true then
+		weapons.player_list[pname].creator = {}
+		weapons.player_list[pname].creator.points = weapons.creator.base_points
+		weapons.player_list[pname].creator.spent = 0
+		weapons.player_list[pname].creator.hp_base = weapons.creator.hp_base
+		weapons.player_list[pname].creator.speed_base = weapons.creator.speed_base
+		weapons.player_list[pname].creator.jump_base = weapons.creator.jump_base
+		weapons.player_list[pname].creator.weight_base = weapons.creator.weight_base
+		weapons.player_list[pname].creator.blocks = weapons.creator.blocks_base
+		weapons.player_list[pname].creator.perk_one = 1
+		weapons.player_list[pname].creator.perk_two = 1
+		weapons.player_list[pname].creator.weapon_pri = 1
+		weapons.player_list[pname].creator.weapon_sec = 1
+		weapons.player_list[pname].creator.weapon_gre = 1
+	end
 
 	weapons.assign_team(player, nil)
+	weapons.set_player_texture(player)
 	minetest.after(2, weapons.player.set_class, player, "assault")
 	player:set_nametag_attributes({
 		color = "#00000000"
 	})
-
-	-- Red Base waypoint
-	local red = 207-35
-	local red2 = 207-42
-	local y = weapons.red_base_y
-	player:hud_add({
-		hud_elem_type = "waypoint",
-		name = "Red Base",
-		text = "m",
-		number = weapons.teams.red_colour,
-		world_pos = {x=red, y=y, z=red}
-	})
-
-	-- Blue Base waypoint
-	local blu = 147-4
-	local blu2 = 192-42
-	y = weapons.blu_base_y
-	player:hud_add({
-		hud_elem_type = "waypoint",
-		name = "Blue Base",
-		text = "m",
-		number = weapons.teams.blue_colour,
-		world_pos = {x=-blu, y=y, z=-blu}
-	})	
-
+	
 	weapons.update_blue_flag = true
 	weapons.update_red_flag = true
 end)
@@ -249,7 +292,7 @@ function weapons.player.set_class(player, class)
 	weapons.player_body[pname] = minetest.add_entity(ppos, "weapons:player_body")
 	local plb_lae = weapons.player_body[pname]:get_luaentity()
 	plb_lae._player_ref = player
-	weapons.player_body[pname]:set_properties({textures = {"assault_class_" .. weapons.player_list[pname].team .. ".png"}})
+	weapons.player_body[pname]:set_properties({textures = {weapons.player_list[pname].texture}})
 	weapons.player_body[pname]:set_attach(player, "",  nulvec, nulvec, true)
 	weapons.player_body[pname]:set_bone_position("Armature_Root", body_pos, body_rot)
 	weapons.player_body[pname]:set_bone_position("Armature_Legs", legs_pos, legs_rot)
@@ -265,7 +308,7 @@ function weapons.player.set_class(player, class)
 		visual = "mesh",
 		mesh = "player_head.x",
 		textures = {
-			"assault_class_"..weapons.player_list[player:get_player_name()].team..".png",
+			weapons.player_list[pname].texture,
 		},
 		visual_size = {x=1.05, y=1.05},
 		collisionbox = {-0.3, 0.0, -0.3, 0.3, 1.77, 0.3},
@@ -344,9 +387,11 @@ minetest.register_globalstep(function(dtime)
 			end
 
 			if anim_frame ~= nil then
-				if anim_frame[pname] ~= -1 then
-					anim_frame[pname] = anim_frame[pname] + dtime
-					frame_offset = math.floor(anim_frame[pname] * 60)
+				if anim_frame[pname] ~= nil then
+					if anim_frame[pname] ~= -1 then
+						anim_frame[pname] = anim_frame[pname] + dtime
+						frame_offset = math.floor(anim_frame[pname] * 60)
+					end
 				end
 			end
 			if solarsail.controls.player[pname] == nil then
@@ -410,11 +455,9 @@ minetest.register_globalstep(function(dtime)
 				elseif weapon._arms == nil then -- Prevent nil crashing
 				else
 					unlock_arms(pname)
-					-- TODO: replace with weapons.get_player_skin(player)
-					local player_skin = "assault_class_"..weapons.player_list[player:get_player_name()].team..".png"
 					weapons.player_arms[pname]:set_properties({
 						mesh = weapon._arms.mesh,
-						textures = {player_skin, weapon._arms.texture}
+						textures = {weapons.player_list[pname].texture, weapon._arms.texture}
 					})
 				end
 				last_arm[pname] = wield

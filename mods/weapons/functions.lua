@@ -130,8 +130,8 @@ function solarsail.util.functions.apply_recoil(player, weapon)
 	
 	-- Camera recoil; cannot be canceled out
 	local vert_deg, hori_deg, look_pitch, look_hori = 0
-	vert_deg = math.random(weapon._recoil_vert_min * 100, weapon._recoil_vert_max * 100) / 100
-	hori_deg = math.random(-weapon._recoil_hori * 100, weapon._recoil_hori * 100) / 100
+	vert_deg = (math.random(weapon._recoil_vert_min * 100, weapon._recoil_vert_max * 100) / 100) * weapons.master_recoil_mult
+	hori_deg = (math.random(-weapon._recoil_hori * 100, weapon._recoil_hori * 100) / 100) * weapons.master_recoil_mult
 	
 	-- Handle aiming
 	local pname = player:get_player_name()
