@@ -3,6 +3,11 @@
 	"Lua.diagnostics.globals": [
 		"minetest",
 		"vector",
-		"weapons"
+		"weapons",
+		"core"
+	],
+	"Lua.diagnostics.disable": [
+		"undefined-field",
+		"redefined-local"
 	]
 }

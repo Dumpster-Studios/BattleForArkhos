@@ -187,6 +187,10 @@ Range 150 nodes.]],
 	_spread = 6.5,
 	_spread_aim = 0.5,
 
+	_fatigue = 15,
+	_fatigue_timer = 0.06,
+	_fatigue_recovery = 0.85,
+
 	-- Arm Animations + Arm visual settings;
 	_anim = {
 		idle = {x=0, y=0},

@@ -1,4 +1,4 @@
-function apply_recoil(player, weapon, ammo)
+local function apply_recoil(player, weapon, ammo)
 	local pname = player:get_player_name()
 	local yaw_rad = player:get_look_horizontal()
 	local pitch_rad = player:get_look_vertical()
@@ -14,33 +14,35 @@ function apply_recoil(player, weapon, ammo)
 		z=result_z * pitch_mult
 	})
 	
-	-- Camera recoil; cannot be canceled out
-	local vert_deg, hori_deg, look_pitch, look_hori = 0
-	local pammo = weapons.player_list[pname][ammo]
-	local vert_curve =
-		solarsail.util.functions.remap(pammo, 0, 100, weapon._recoil_vert_min, weapon._recoil_vert_max) * weapons.master_recoil_mult
-	local hori_curve =
-		solarsail.util.functions.remap(pammo, 0, 100, weapon._recoil_hori, weapon._recoil_hori_max) * weapons.master_recoil_mult
-	
-	if math.random(0, 1) == 1 then
-		hori_curve = -hori_curve
-	end
+	if not weapons.disable_visual_recoil then
+		-- Camera recoil; cannot be canceled out
+		local vert_deg, hori_deg, look_pitch, look_hori = 0, 0, 0, 0
+		local pammo = weapons.player_list[pname][ammo]
+		local vert_curve =
+			solarsail.util.functions.remap(pammo, 0, 100, weapon._recoil_vert_min, weapon._recoil_vert_max) * weapons.master_recoil_mult
+		local hori_curve =
+			solarsail.util.functions.remap(pammo, 0, 100, weapon._recoil_hori, weapon._recoil_hori_max) * weapons.master_recoil_mult
+		
+		if math.random(0, 1) == 1 then
+			hori_curve = -hori_curve
+		end
 
-	-- Handle aiming
-	local pname = player:get_player_name()
-	if weapons.player_list[pname].aim_mode then
-		look_pitch = player:get_look_vertical() + (math.rad(-vert_curve) * weapon._recoil_aim_factor)
-		look_hori = player:get_look_horizontal() + (math.rad(hori_curve) * weapon._recoil_aim_factor)
-	else
-		look_pitch = player:get_look_vertical() + (math.rad(-vert_curve) * weapon._recoil_factor)
-		look_hori = player:get_look_horizontal() + (math.rad(hori_curve) * weapon._recoil_factor)
+		-- Handle aiming
+		local pname = player:get_player_name()
+		if weapons.player_list[pname].aim_mode then
+			look_pitch = player:get_look_vertical() + (math.rad(-vert_curve) * weapon._recoil_aim_factor)
+			look_hori = player:get_look_horizontal() + (math.rad(hori_curve) * weapon._recoil_aim_factor)
+		else
+			look_pitch = player:get_look_vertical() + (math.rad(-vert_curve) * weapon._recoil_factor)
+			look_hori = player:get_look_horizontal() + (math.rad(hori_curve) * weapon._recoil_factor)
+		end
+		player:set_look_vertical(look_pitch)
+		player:set_look_horizontal(look_hori)
 	end
-	player:set_look_vertical(look_pitch)
-	player:set_look_horizontal(look_hori)
 end
 
 
-function raycast_minigun(player, weapon)
+local function raycast_minigun(player, weapon)
 	local wield = player:get_wielded_item():get_name()
 	local pname = player:get_player_name()
 	local ammo = weapon._ammo_type
@@ -58,7 +60,7 @@ function raycast_minigun(player, weapon)
 			-- Ray calculations.
 			local raybegin = vector.add(player:get_pos(), {x=0, y=weapons.default_eye_height, z=0})
 			local raygunbegin = vector.add(player:get_pos(), {x=0, y=1.2, z=0})
-			local vec_x, vec_y, vec_z = 0
+			local vec_x, vec_y, vec_z = 0, 0, 0
 
 			local _spread = solarsail.util.functions.remap(weapons.player_list[pname][ammo], 0, 100, weapon._spread, weapon._spread_max)
 			local _spread_aim = solarsail.util.functions.remap(weapons.player_list[pname][ammo], 0, 100, weapon._spread_aim, weapon._spread_aim_max)
@@ -226,6 +228,11 @@ Range 125 nodes.]],
 	_recoil_hori_max = 7.5,
 	_recoil_factor = 0.8,
 	_recoil_aim_factor = 0.5,
+
+	-- Not required, but to avoid crashes where data is nil.
+	_fatigue = 15,
+	_fatigue_timer = 0.06,
+	_fatigue_recovery = 0.85, 
 	
 	_spread = 4.5,
 	_spread_max = 14,

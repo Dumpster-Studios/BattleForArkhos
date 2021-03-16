@@ -118,6 +118,8 @@ local function set_ammo(player, class)
 	end
 	weapons.player_list[pname].blocks = base_class.stats.blocks
 	weapons.player_list[pname].blocks_max = base_class.stats.blocks
+	weapons.player_list[pname].fatigue = 0
+	weapons.player_list[pname].fatigue_max = 100
 end
 
 

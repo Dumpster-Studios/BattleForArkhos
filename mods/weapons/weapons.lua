@@ -223,18 +223,28 @@ function weapons.raycast_bullet(player, weapon)
 			-- Ray calculations.
 			local raybegin = vector.add(player:get_pos(), {x=0, y=weapons.default_eye_height, z=0})
 			local raygunbegin = vector.add(player:get_pos(), {x=0, y=1.2, z=0})
-			local vec_x, vec_y, vec_z = 0
+			local vec_x, vec_y, vec_z
 
 			-- Handle aiming
-			if weapons.player_list[pname].aim_mode then
-				vec_x = math.random(-weapon._spread_aim * 100, weapon._spread_aim * 100) / 100
-				vec_y = math.random(-weapon._spread_aim * 100, weapon._spread_aim * 100) / 100
-				vec_z = math.random(-weapon._spread_aim * 100, weapon._spread_aim * 100) / 100
-			else
-				vec_x = math.random(-weapon._spread * 100, weapon._spread * 100) / 100
-				vec_y = math.random(-weapon._spread * 100, weapon._spread * 100) / 100
-				vec_z = math.random(-weapon._spread * 100, weapon._spread * 100) / 100
+			local fatigue_mult = weapons.player_list[pname].fatigue / 100
+			if weapons.player_list[pname].fatigue < weapon._fatigue then
+				-- This only applies to shotguns.
+				if weapon._pellets > 1 then
+					fatigue_mult = (weapon._fatigue/2.5) / 100
+				end
 			end
+			if weapons.player_list[pname].aim_mode then
+				local spread = weapon._spread_aim * fatigue_mult
+				vec_x = math.random(-spread * 100, spread * 100) / 100
+				vec_y = math.random(-spread * 100, spread * 100) / 100
+				vec_z = math.random(-spread * 100, spread * 100) / 100
+			else
+				local spread = weapon._spread * fatigue_mult
+				vec_x = math.random(-spread * 100, spread * 100) / 100
+				vec_y = math.random(-spread * 100, spread * 100) / 100
+				vec_z = math.random(-spread * 100, spread * 100) / 100
+			end
+
 			local aim_mod = {x=vec_x, y=vec_y, z=vec_z}
 			local raymod = vector.add(
 				vector.multiply(player:get_look_dir(), weapon._range), aim_mod
@@ -291,6 +301,10 @@ function weapons.raycast_bullet(player, weapon)
 				minetest.after(dist/weapon._speed, weapon.bullet_on_hit, pointed, player,
 					weapon, target_pos, dist)
 			end
+		end
+		weapons.player_list[pname].fatigue = weapons.player_list[pname].fatigue + weapon._fatigue
+		if weapons.player_list[pname].fatigue > 100 then
+			weapons.player_list[pname].fatigue = 100
 		end
 		-- Handle recoil of the equipped weapon
 		solarsail.util.functions.apply_recoil(player, weapon)
@@ -491,7 +505,6 @@ function weapons.place_block(player, weapon)
 end
 
 local player_cooldown_timer = {}
-
 -- Handle energy weapon cooldowns:
 minetest.register_globalstep(function(dtime)
 	for _, player in ipairs(minetest.get_connected_players()) do
@@ -527,6 +540,44 @@ minetest.register_globalstep(function(dtime)
 			elseif solarsail.controls.player[pname].LMB then
 				player_cooldown_timer[pname] = 0
 			end
+		end
+	end
+end)
+
+local player_fatigue_timer = {}
+-- Handle weapon sway cooldowns from firing too long
+minetest.register_globalstep(function(dtime)
+	for _, player in ipairs(minetest.get_connected_players()) do
+		local pname = player:get_player_name()
+		local weapon = minetest.registered_nodes[player:get_wielded_item():get_name()]
+		if player_fatigue_timer[pname] == nil then
+			player_fatigue_timer[pname] = 0 - dtime
+		end
+
+		player_fatigue_timer[pname] = player_fatigue_timer[pname] + dtime
+
+		if weapon == nil then
+		elseif weapon._fatigue_timer == nil then
+			error("weapon: " .. weapon._localisation.itemstring .. " missing ._fatigue_timer field.")
+		elseif weapons.player_list[pname].fatigue == 0 then -- don't even bother trying
+		elseif player_fatigue_timer[pname] > weapon._fatigue_timer then
+			local ammo = weapon._ammo_type
+			if weapon._fatigue_recovery == nil then
+				error("weapon: " .. weapon._localisation.itemstring .. " missing ._fatigue_recovery")
+			end
+			if weapons.is_reloading[pname][ammo] then
+				if weapons.player_list[pname].fatigue > 0 then
+					weapons.player_list[pname].fatigue = weapons.player_list[pname].fatigue * weapon._fatigue_recovery
+				end
+			elseif not solarsail.controls.player[pname].LMB then
+				if weapons.player_list[pname].fatigue <= 0.01 then
+					weapons.player_list[pname].fatigue = 0
+				elseif weapons.player_list[pname].fatigue > 0.01 then
+					weapons.player_list[pname].fatigue = weapons.player_list[pname].fatigue * weapon._fatigue_recovery
+				end
+			else
+			end
+			player_fatigue_timer[pname] = 0
 		end
 	end
 end)

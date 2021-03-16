@@ -128,22 +128,24 @@ function solarsail.util.functions.apply_recoil(player, weapon)
 		z=result_z * pitch_mult
 	})
 	
-	-- Camera recoil; cannot be canceled out
-	local vert_deg, hori_deg, look_pitch, look_hori = 0
-	vert_deg = (math.random(weapon._recoil_vert_min * 100, weapon._recoil_vert_max * 100) / 100) * weapons.master_recoil_mult
-	hori_deg = (math.random(-weapon._recoil_hori * 100, weapon._recoil_hori * 100) / 100) * weapons.master_recoil_mult
-	
-	-- Handle aiming
-	local pname = player:get_player_name()
-	if weapons.player_list[pname].aim_mode then
-		look_pitch = player:get_look_vertical() + (math.rad(-vert_deg) * weapon._recoil_aim_factor)
-		look_hori = player:get_look_horizontal() + (math.rad(hori_deg) * weapon._recoil_aim_factor)
-	else
-		look_pitch = player:get_look_vertical() + (math.rad(-vert_deg) * weapon._recoil_factor)
-		look_hori = player:get_look_horizontal() + (math.rad(hori_deg) * weapon._recoil_factor)
+	if not weapons.disable_visual_recoil then
+		-- Camera recoil; cannot be canceled out
+		local vert_deg, hori_deg, look_pitch, look_hori = 0, 0, 0, 0
+		vert_deg = (math.random(weapon._recoil_vert_min * 100, weapon._recoil_vert_max * 100) / 100) * weapons.master_recoil_mult
+		hori_deg = (math.random(-weapon._recoil_hori * 100, weapon._recoil_hori * 100) / 100) * weapons.master_recoil_mult
+		
+		-- Handle aiming
+		local pname = player:get_player_name()
+		if weapons.player_list[pname].aim_mode then
+			look_pitch = player:get_look_vertical() + (math.rad(-vert_deg) * weapon._recoil_aim_factor)
+			look_hori = player:get_look_horizontal() + (math.rad(hori_deg) * weapon._recoil_aim_factor)
+		else
+			look_pitch = player:get_look_vertical() + (math.rad(-vert_deg) * weapon._recoil_factor)
+			look_hori = player:get_look_horizontal() + (math.rad(hori_deg) * weapon._recoil_factor)
+		end
+		player:set_look_vertical(look_pitch)
+		player:set_look_horizontal(look_hori)
 	end
-	player:set_look_vertical(look_pitch)
-	player:set_look_horizontal(look_hori)
 end
 
 function solarsail.util.functions.apply_explosion_recoil(player, multiplier, origin)

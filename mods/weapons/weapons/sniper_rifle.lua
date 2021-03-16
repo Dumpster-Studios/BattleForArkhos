@@ -60,6 +60,10 @@ Range 200 nodes.]],
 	_spread = 25,
 	_spread_aim = 0,
 
+	_fatigue = 75,
+	_fatigue_timer = 0.06,
+	_fatigue_recovery = 0.98,
+
 	_break_hits = 4,
 	_block_chance = 100,
 

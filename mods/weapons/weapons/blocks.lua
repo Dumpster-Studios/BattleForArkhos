@@ -28,6 +28,9 @@ minetest.register_node(":core:team_neutral", {
 	_has_tracer = false,
 	_phys_alt = 1,
 	on_fire = weapons.place_block,
+	_fatigue = 0,
+	_fatigue_timer = 0.1,
+	_fatigue_recovery = 0.09,
 
 	on_place = function(itemstack, placer, pointed_thing)
 		return itemstack
@@ -69,6 +72,9 @@ minetest.register_node(":core:lamp_neutral", {
 	_has_tracer = false,
 	_phys_alt = 1,
 	on_fire = weapons.place_block,
+	_fatigue = 0,
+	_fatigue_timer = 0.1,
+	_fatigue_recovery = 0.09,
 
 	on_place = function(itemstack, placer, pointed_thing)
 		return itemstack
@@ -118,6 +124,9 @@ minetest.register_node(":core:slab_neutral", {
 	_has_tracer = false,
 	_phys_alt = 1,
 	on_fire = weapons.place_block,
+	_fatigue = 0,
+	_fatigue_timer = 0.1,
+	_fatigue_recovery = 0.09,
 
 	on_place = function(itemstack, placer, pointed_thing)
 		return itemstack

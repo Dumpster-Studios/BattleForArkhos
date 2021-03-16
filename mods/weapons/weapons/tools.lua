@@ -30,6 +30,9 @@ minetest.register_node("weapons:pickaxe", {
 	_phys_alt = 1,
 	on_fire = weapons.raycast_melee,
 	melee_on_hit = weapons.melee_on_hit,
+	_fatigue = 0,
+	_fatigue_timer = 0.1,
+	_fatigue_recovery = 0.09,
 
 	on_place = function(itemstack, placer, pointed_thing)
 		return itemstack
@@ -72,6 +75,9 @@ minetest.register_node("weapons:pickaxe_alt", {
 	_is_alt = true,
 	on_fire = weapons.raycast_melee,
 	melee_on_hit = weapons.melee_on_hit,
+	_fatigue = 0,
+	_fatigue_timer = 0.1,
+	_fatigue_recovery = 0.09,
 
 	on_place = function(itemstack, placer, pointed_thing)
 		return itemstack
@@ -113,6 +119,9 @@ minetest.register_node("weapons:flag_red", {
 	_phys_alt = 0.75,
 	on_fire = weapons.raycast_flag_melee,
 	flag_on_hit = weapons.flag_on_hit,
+	_fatigue = 0,
+	_fatigue_timer = 0.1,
+	_fatigue_recovery = 0.09,
 
 	on_place = function(itemstack, placer, pointed_thing)
 		return itemstack
@@ -152,6 +161,9 @@ minetest.register_node("weapons:flag_blue", {
 	_spread_max = 0,
 	_has_tracer = 0,
 	_phys_alt = 0.75,
+	_fatigue = 0,
+	_fatigue_timer = 0.1,
+	_fatigue_recovery = 0.09,
 
 	on_place = function(itemstack, placer, pointed_thing)
 		return itemstack

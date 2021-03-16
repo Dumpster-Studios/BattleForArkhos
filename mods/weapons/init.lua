@@ -5,6 +5,7 @@
 -- global stuff.
 
 weapons = {}
+weapons.disable_visual_recoil = true
 weapons.master_recoil_mult = 0.9
 weapons.status = {} -- Server status info
 weapons.modchannels = {} -- Per-player mod channels, stored by player name
@@ -32,7 +33,7 @@ dofile(minetest.get_modpath("weapons").."/ban.lua")
 dofile(minetest.get_modpath("weapons").."/functions.lua")
 
 -- uptime counting
-function conv_to_hms(seconds)
+local function conv_to_hms(seconds)
 	local seconds = tonumber(seconds)
 	if seconds <= 0 then
 		return "00h00m00s";

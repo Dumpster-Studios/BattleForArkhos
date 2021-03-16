@@ -77,8 +77,12 @@ Range 150 nodes.]],
 	_recoil_factor = 0.8/2,
 	_recoil_aim_factor = 0.5/2,
 	
-	_spread = 3.75,
-	_spread_aim = 0.5,
+	_spread = 5.75,
+	_spread_aim = 2.5,
+
+	_fatigue = 5,
+	_fatigue_timer = 0.06,
+	_fatigue_recovery = 0.85,
 
 	_break_hits = 2,
 	_block_chance = 75,
