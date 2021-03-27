@@ -122,14 +122,13 @@ minetest.register_globalstep(function(dtime)
 							end
 						end
 					elseif weapon._type == "block" then
+						-- TODO: Move to custom on_place function
 						if weapons.player_list[player:get_player_name()].blocks > 0 then
 							weapon.on_fire(player, weapon)
 							weapons.player_list[player:get_player_name()].blocks = 
 								weapons.player_list[player:get_player_name()].blocks - 1
 						end
-					elseif weapon._type == "tool" then
-						weapon.on_fire(player, weapon)
-					elseif weapon._type == "tool_alt" then
+					else
 						weapon.on_fire(player, weapon)
 					end
 				end

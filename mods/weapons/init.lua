@@ -332,11 +332,15 @@ dofile(minetest.get_modpath("weapons").."/mapgen.lua")
 dofile(minetest.get_modpath("weapons").."/controls.lua")
 dofile(minetest.get_modpath("weapons").."/tracers.lua")
 
--- Built in items
+-- External weapons
+-- todo add /primary/ /exotic/ /secondary/ /grenades/ and /misc/ folders that are automatically scanned and registered from.
+
+-- Misc
+dofile(minetest.get_modpath("weapons").."/weapons/fists.lua")
 dofile(minetest.get_modpath("weapons").."/weapons/tools.lua")
 dofile(minetest.get_modpath("weapons").."/weapons/blocks.lua")
 
--- External weapons
+-- Primary
 dofile(minetest.get_modpath("weapons").."/weapons/assault_rifle.lua")
 dofile(minetest.get_modpath("weapons").."/weapons/burst_rifle.lua")
 dofile(minetest.get_modpath("weapons").."/weapons/sniper_rifle.lua")
@@ -344,15 +348,18 @@ dofile(minetest.get_modpath("weapons").."/weapons/veteran_rifle.lua")
 dofile(minetest.get_modpath("weapons").."/weapons/auto_shotgun.lua")
 dofile(minetest.get_modpath("weapons").."/weapons/plasma_autorifle.lua")
 dofile(minetest.get_modpath("weapons").."/weapons/light_machine_gun.lua")
+
+-- Exotic (Treated as Primary Slot)
 dofile(minetest.get_modpath("weapons").."/weapons/minigun.lua")
 
---dofile(minetest.get_modpath("weapons").."/weapons/railgun.lua")
+-- Secondary
+
+
 --dofile(minetest.get_modpath("weapons").."/weapons/smg.lua")
---dofile(minetest.get_modpath("weapons").."/weapons/shotgun.lua")
 --dofile(minetest.get_modpath("weapons").."/weapons/rocketry.lua")
 --dofile(minetest.get_modpath("weapons").."/weapons/grenades.lua")
 
-weapons.default_first_person_eyes = vector.new(0, 0, 2.25)
+weapons.default_first_person_eyes = vector.new(0, 0, 2.05)
 minetest.register_on_player_receive_fields(
 			function(player, formname, fields)
 	if formname == "camera_control" then

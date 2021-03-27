@@ -6,7 +6,9 @@ function weapons.register_weapon(name, creator_allowed, def)
 	local node = table.copy(def)
 	node.drawtype = "glasslike"
 	node.tiles = {"transparent.png"}
-	node.range = 0
+	if node.range == nil then
+		node.range = 0
+	end
 	node.node_placement_prediction = ""
 	
 	if creator_allowed then

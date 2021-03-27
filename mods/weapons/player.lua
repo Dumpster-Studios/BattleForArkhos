@@ -52,7 +52,14 @@ base_class.items = {
 	"weapons:plasma_autorifle",
 	"weapons:minigun",
 	"weapons:pickaxe",
-	"core:team_neutral"
+	"core:team_neutral",
+	"weapons:fists"
+}
+
+local always_given_items = {
+	"weapons:pickaxe",
+	"core:team_neutral",
+	"weapons:fists"
 }
 
 weapons.red_flag = red_flag
@@ -157,8 +164,6 @@ function weapons.get_player_texture(player)
 	local player_head = "player_"..pname..".png"
 	local width, height = weapons.get_tex_size(path..player_head)
 	local skin_overlay = weapons.get_player_skin(player)
-
-	minetest.chat_send_all(player_head)
 
 	if skin_overlay == nil then
 		return nil
@@ -348,8 +353,20 @@ local function unlock_anim(pname)
 end
 
 local function unlock_arms(pname)
-	arm_frame[pname] = -1
-	arm_type[pname] = "idle"
+		arm_frame[pname] = -1
+		arm_type[pname] = "idle"
+end
+
+local function reset_arm_pos(pname, weapon)
+	if weapon == nil then
+		weapons.player_arms[pname]:set_bone_position("Armature_Root", arms_pos, arms_rot)
+	else
+		if weapon._arms.pos == nil then
+			weapons.player_arms[pname]:set_bone_position("Armature_Root", arms_pos, arms_rot)
+		else
+			weapons.player_arms[pname]:set_bone_position("Armature_Root", weapon._arms.pos, arms_rot)
+		end
+	end
 end
 
 local animation_table = {}
@@ -383,7 +400,11 @@ minetest.register_globalstep(function(dtime)
 							ppitch = weapon._min_arm_angle
 						end
 						--Manually control arms bone here
-						weapons.player_arms[pname]:set_bone_position("Armature_Root", arms_pos, {x=ppitch+arms_rot.x, y=arms_rot.y, z=arms_rot.z})
+						local bpos = arms_pos
+						if weapon._arms.pos ~= nil then
+							bpos = weapon._arms.pos
+						end
+						weapons.player_arms[pname]:set_bone_position("Armature_Root", bpos, {x=ppitch+arms_rot.x, y=arms_rot.y, z=arms_rot.z})
 					end
 				end
 			end
@@ -450,16 +471,19 @@ minetest.register_globalstep(function(dtime)
 					arm_after[pname]:cancel()
 					unlock_arms(pname)
 					arm_after[pname] = ""
-				end				
-				
+				end
+
 				-- Update arms visuals
 				if weapon == nil then
 				elseif weapon._arms == nil then -- Prevent nil crashing
 				else
+					reset_arm_pos(pname, weapon)
 					unlock_arms(pname)
+					local materials = weapon._arms.textures
+					materials[weapon._arms.skin_pos] = weapons.player_list[pname].texture
 					weapons.player_arms[pname]:set_properties({
 						mesh = weapon._arms.mesh,
-						textures = {weapons.player_list[pname].texture, weapon._arms.texture}
+						textures = materials
 					})
 				end
 				last_arm[pname] = wield
@@ -476,7 +500,7 @@ minetest.register_globalstep(function(dtime)
 						arm_type[pname] = "reload"
 						arm_after[pname] = minetest.after(weapon._reload + 0.03, unlock_arms, pname)
 						if weapons.player_arms[pname] ~= nil then
-							weapons.player_arms[pname]:set_animation(weapon._anim.reload, 60, 0.015, false)
+							weapons.player_arms[pname]:set_animation(weapon._anim.reload, 60, 0.15, true)
 						end
 					elseif solarsail.controls.player[pname].RMB then -- Handle aiming
 						if solarsail.controls.player[pname].LMB then
@@ -484,13 +508,13 @@ minetest.register_globalstep(function(dtime)
 							arm_type[pname] = "aim_fire"
 							arm_after[pname] = minetest.after(60 / weapon._rpm + 0.03, unlock_arms, pname)
 							if weapons.player_arms[pname] ~= nil then
-								weapons.player_arms[pname]:set_animation(weapon._anim.aim_fire, 60, 0.015, false)
+								weapons.player_arms[pname]:set_animation(weapon._anim.aim_fire, 60, 0.15, true)
 							end
 						else
+							arm_frame[pname] = -1
+							arm_type[pname] = "aim"
 							if weapons.player_arms[pname] ~= nil then
-								arm_frame[pname] = -1
-								arm_type[pname] = "aim"
-								weapons.player_arms[pname]:set_animation(weapon._anim.aim, 60, 0.1, false)
+								weapons.player_arms[pname]:set_animation(weapon._anim.aim, 60, 0.15, true)
 							end
 						end
 					else
@@ -499,15 +523,13 @@ minetest.register_globalstep(function(dtime)
 							arm_type[pname] = "idle_fire"
 							arm_after[pname] = minetest.after(60 / weapon._rpm + 0.03, unlock_arms, pname)
 							if weapons.player_arms[pname] ~= nil then
-								weapons.player_arms[pname]:set_animation(weapon._anim.idle_fire, 60, 0.015, false)
+								weapons.player_arms[pname]:set_animation(weapon._anim.idle_fire, 60, 0.15, true)
 							end
 						else
+							arm_frame[pname] = -1
+							arm_type[pname] = "idle"
 							if weapons.player_arms[pname] ~= nil then
-								arm_frame[pname] = -1
-								arm_type[pname] = "idle"
-								if weapons.player_arms[pname] then
-									weapons.player_arms[pname]:set_animation(weapon._anim.idle, 60, 0.1, false)
-								end
+								weapons.player_arms[pname]:set_animation(weapon._anim.idle, 60, 0.15, true)
 							end
 						end
 					end

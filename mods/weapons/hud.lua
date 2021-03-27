@@ -280,7 +280,7 @@ local function scale_ammo(pname, scale, remove_huds)
 		weapon = minetest.registered_nodes[player:get_wielded_item():get_name()]
 		count_ammo = calc_ammo_bar_pos(player, weapon)
 		if weapon._ammo_type == nil then
-			count_text = "err()"
+			count_text = ""
 		else
 			count_text = weapons.player_list[pname][weapon._ammo_type] .. 
 				"/" .. weapons.player_list[pname][weapon._ammo_type.."_max"]
@@ -326,7 +326,7 @@ end
 
 local function calc_hp_text(player)
 	local pname = player:get_player_name()
-	local msg = "err()"
+	local msg = ""
 	if weapons.player_list[pname] == nil then
 		return msg, msg
 	elseif weapons.player_list[pname].hp == nil then

@@ -129,7 +129,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				end
 			end
 		end
-	end	
+	end
 	vm:set_data(data)
 	vm:update_liquids()
 	vm:update_map()

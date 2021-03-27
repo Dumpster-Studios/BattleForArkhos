@@ -15,7 +15,7 @@ minetest.register_node("weapons:pickaxe", {
 	_fov_mult = 0,
 	_type = "tool",
 	_crosshair = "railgun_crosshair.png",
-	_firing_sound = "pickaxe_swing.ogg",
+	_firing_sound = "pickaxe_swing",
 	_name = "pickaxe",
 	_damage = 75,
 	_rpm = 50,

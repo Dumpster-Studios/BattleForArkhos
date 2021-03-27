@@ -4,7 +4,8 @@
 		"minetest",
 		"vector",
 		"weapons",
-		"core"
+		"core",
+		"VoxelArea"
 	],
 	"Lua.diagnostics.disable": [
 		"undefined-field",

@@ -97,7 +97,8 @@ Range 150 nodes.]],
 	},
 	_arms = {
 		mesh = "assault_arms.x",
-		texture = "assault_rifle.png",
+		skin_pos = 1,
+		textures = {"transarent.png", "assault_rifle.png"},
 	},
 	on_fire = function(player, weapon)
 		for i=1, shots_used do
