@@ -255,11 +255,6 @@ function weapons.respawn_player(player, respawn)
 	end
 
 	player:set_pos({x=x, y=y+0.5, z=z})
-	if respawn then
-		weapons.set_ammo(player, weapons.player_list[pname].class)
-		weapons.clear_inv(player)
-		weapons.add_class_items(player, weapons.player_list[pname].class)
-	end
 	weapons.hud.remove_blackout(player)
 end
 

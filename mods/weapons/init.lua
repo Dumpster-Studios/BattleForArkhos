@@ -14,7 +14,8 @@ weapons.player = {} -- Some functions
 weapons.player_list = {} -- Current game related data
 weapons.player_data = {} -- Save data and config
 weapons.is_reloading = {} -- This should be part of player_list
-weapons.default_eye_height = 1.58 -- Defaults
+weapons.default_eye_height = 1.52 -- Defaults
+weapons.default_first_person_eyes = vector.new(0, 0, 1)
 weapons.default_modchannel = "battleforarkhos_" -- Defaults
 
 -- Handle a one time file load at bootup to ensure data is properly loaded
@@ -353,13 +354,13 @@ dofile(minetest.get_modpath("weapons").."/weapons/light_machine_gun.lua")
 dofile(minetest.get_modpath("weapons").."/weapons/minigun.lua")
 
 -- Secondary
+dofile(minetest.get_modpath("weapons").."/weapons/boringpistol.lua")
 
 
 --dofile(minetest.get_modpath("weapons").."/weapons/smg.lua")
 --dofile(minetest.get_modpath("weapons").."/weapons/rocketry.lua")
 --dofile(minetest.get_modpath("weapons").."/weapons/grenades.lua")
 
-weapons.default_first_person_eyes = vector.new(0, 0, 2.05)
 minetest.register_on_player_receive_fields(
 			function(player, formname, fields)
 	if formname == "camera_control" then

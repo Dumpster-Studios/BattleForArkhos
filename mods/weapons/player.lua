@@ -4,7 +4,7 @@
 
 -- Create a class configuration:
 weapons.creator = {}
-weapons.creator.base_points = 30
+weapons.creator.base_points = 50
 
 weapons.creator.hp_cost = 3
 weapons.creator.hp_base = 100
@@ -26,8 +26,6 @@ weapons.creator.blocks_cost = 1
 weapons.creator.blocks_base = 20
 weapons.creator.blocks_gain = 3
 
-weapons.creator.perk_cost = 5
-
 local base_class = {}
 base_class.stats = {
 	hp = weapons.creator.hp_base,
@@ -42,25 +40,169 @@ base_class.physics = {
 	sneak_glitch = true,
 	new_move = false
 }
+
+
 base_class.items = {
 	"weapons:assault_rifle",
-	"weapons:burst_rifle",
-	"weapons:sniper_rifle",
-	"weapons:veteran_rifle",
-	"weapons:pump_shotgun",
-	"weapons:light_machine_gun",
-	"weapons:plasma_autorifle",
-	"weapons:minigun",
-	"weapons:pickaxe",
-	"core:team_neutral",
-	"weapons:fists"
+	"weapons:boring_pistol"
 }
+
+-- base_class.items = {
+-- 	"weapons:assault_rifle",
+-- 	"weapons:burst_rifle",
+-- 	"weapons:sniper_rifle",
+-- 	"weapons:veteran_rifle",
+-- 	"weapons:pump_shotgun",
+-- 	"weapons:light_machine_gun",
+-- 	"weapons:plasma_autorifle",
+-- 	"weapons:minigun",
+-- 	"weapons:pickaxe",
+-- 	"core:team_neutral",
+-- 	"weapons:fists",
+-- 	"weapons:boring_pistol"
+-- }
 
 local always_given_items = {
 	"weapons:pickaxe",
 	"core:team_neutral",
 	"weapons:fists"
 }
+
+
+
+
+---------------------------------
+---------------------------------
+-- Create a class testing zone --
+---------------------------------
+---------------------------------
+
+local create_a_class = 
+	"size[12,8]"..
+	"button[10,6;2,1;save_changes;Respawn]"..
+	"button[10,7;2,1;refresh;Refresh]"
+
+weapons.creator.weapons = {}
+weapons.creator.weapons.primary = {}
+weapons.creator.weapons.secondary = {}
+weapons.creator.weapons.grenades = {}
+weapons.creator.perks = {}
+
+function weapons.creator.register_weapon(localisation, slot)
+	weapons.creator.weapons[slot][#weapons.creator.weapons[slot]+1] = localisation
+end
+
+function weapons.creator.generate_weapons_list(player)
+	local pname = player:get_player_name()
+	local pri_list, pri_tooltip, sec_list, sec_tooltip, gre_list, gre_tooltip = "", "", "", "", "", ""
+	local pri_index, sec_index, gre_index = 1,1,1
+
+	-- Construct primary weapons dropdown and tooltip:
+	for index, localisation in pairs(weapons.creator.weapons.primary) do
+		if index ~= #weapons.creator.weapons.primary then
+			pri_list = pri_list .. localisation.name .. ","
+		else
+			pri_list = pri_list .. localisation.name .. ";"
+		end
+		
+		if index == weapons.player_list[pname].creator.weapon_pri then
+			pri_tooltip = "tooltip[0,0;5,1;"..localisation.tooltip.."]"
+			pri_index = index
+		end
+	end
+
+	-- Invalidate weapons that used to exist but no longer exist in updates,
+	-- ideally this should never happen but just in case classes are remembered between restarts
+	if #weapons.creator.weapons.primary < weapons.player_list[pname].creator.weapon_pri then
+		pri_tooltip = "tooltip[0,0;5,1;"..weapons.creator.weapons.primary[1].tooltip.."]"
+		print("[WARNING]: Weapon index is invalid. Potentially a missing weapon?")
+	end
+
+	for index, localisation in pairs(weapons.creator.weapons.secondary) do
+		if index ~= #weapons.creator.weapons.secondary then
+			sec_list = sec_list .. localisation.name .. ","
+		else
+			sec_list = sec_list .. localisation.name .. ";"
+		end
+
+		if index == weapons.player_list[pname].creator.weapon_sec then
+			sec_tooltip = "tooltip[0,2.5;5,1;"..localisation.tooltip.."]"
+			sec_index = index
+		end
+	end
+
+	-- Invalidate weapons that used to exist but no longer exist in updates,
+	-- ideally this should never happen but just in case classes are remembered between restarts
+	if #weapons.creator.weapons.secondary < weapons.player_list[pname].creator.weapon_sec then
+		sec_tooltip = "tooltip[0,2.5;5,1;"..weapons.creator.weapons.secondary[1].tooltip.."]"
+		print("[WARNING]: Weapon index is invalid. Potentially a missing weapon?")
+	end
+
+	local dropdown_pri = "dropdown[0,0;4;weapon_pri;"..pri_list..pri_index..";true]"
+	local dropdown_sec = "dropdown[0,2.5;4;weapon_sec;"..sec_list..sec_index..";true]"
+
+	return dropdown_pri..pri_tooltip..dropdown_sec..sec_tooltip
+end
+
+--	weapon_sec = "1",
+--	weapon_pri = "3",
+function weapons.creator.form_to_creator(fields, player, pname)
+	if fields.weapon_pri ~= nil then
+		weapons.player_list[pname].creator.weapon_pri = tonumber(fields.weapon_pri)
+	end
+	if fields.weapon_sec ~= nil then
+		weapons.player_list[pname].creator.weapon_sec = tonumber(fields.weapon_sec)
+	end
+end
+
+function weapons.creator.creator_to_class(player, pname)
+	local wep_pri, wep_sec = weapons.creator.weapons.primary[weapons.player_list[pname].creator.weapon_pri].itemstring, weapons.creator.weapons.secondary[weapons.player_list[pname].creator.weapon_sec].itemstring
+	local items = {}
+	items[1] = wep_pri
+	items[2] = wep_sec
+
+	for k, item in pairs(always_given_items) do
+		items[#items+1] = item
+	end
+
+	-- Manage Health and stuff right here
+	weapons.player.set_class(player, items)
+end
+
+minetest.register_chatcommand("creator", {
+	description = "create a class, will respawn you.",
+	func = function(name, param)
+		local weapon_lists = weapons.creator.generate_weapons_list(minetest.get_player_by_name(name))
+		minetest.show_formspec(name, "create_a_class", create_a_class..weapon_lists)
+	end,
+})
+
+minetest.register_on_player_receive_fields(function(player, formname, fields)
+	local pname = player:get_player_name()
+	if formname == "create_a_class" then
+		if fields.save_changes then
+			if weapons.player_list[pname].texture == nil then
+				minetest.close_formspec(pname, "create_a_class")
+			else
+				weapons.kill_player(player, player, {_localisation={name="Suicide Pill"}}, 0)
+			end
+			weapons.creator.form_to_creator(fields, player, pname)
+			weapons.creator.creator_to_class(player, pname)
+		elseif fields.quit then
+			weapons.creator.form_to_creator(fields, player, pname)
+			if weapons.player_list[pname].texture == nil then
+				local weapon_lists = weapons.creator.generate_weapons_list(player)
+				minetest.show_formspec(player:get_player_name(), "create_a_class", create_a_class..weapon_lists)		
+			else
+				minetest.close_formspec(pname, "create_a_class")
+			end
+		else -- Formspec updates
+			weapons.creator.form_to_creator(fields, player, pname)
+			local weapon_lists = weapons.creator.generate_weapons_list(player)
+			minetest.show_formspec(player:get_player_name(), "create_a_class", create_a_class..weapon_lists)
+		end
+	end
+end)
 
 weapons.red_flag = red_flag
 weapons.blue_flag = blue_flag
@@ -73,10 +215,12 @@ end
 
 weapons.clear_inv = clear_inv
 
-local function add_class_items(player, class)
+
+local function add_class_items(player, class_items)
+	local items = class_items or base_class.items
 	local p_inv = player:get_inventory()
 	local pname = player:get_player_name()
-	for k, stack in pairs(base_class.items) do
+	for k, stack in pairs(class_items) do
 		local istack = ItemStack(stack .. " 1")
 		p_inv:add_item("main", istack)
 		-- Hacky bullshit part 69
@@ -84,7 +228,7 @@ local function add_class_items(player, class)
 		-- properly *apply* it.
 		weapons.is_reloading[pname][stack] = false
 	end
-	player:hud_set_hotbar_itemcount(#base_class.items)
+	player:hud_set_hotbar_itemcount(#class_items)
 end
 
 weapons.add_class_items = add_class_items
@@ -93,9 +237,13 @@ local function set_player_physics(player)
 
 end
 
-local function set_ammo(player, class)
+local function set_ammo(player, class_items, class_stats)
 	local pname = player:get_player_name()
-	for _, stack in pairs(base_class.items) do
+
+	local items = class_items or base_class.items
+	local stats = class_stats or base_class.items
+	
+	for _, stack in pairs(items) do
 		-- Big hax btw, teams can have differing magazine sizes
 		local weapon = minetest.registered_nodes[stack]
 
@@ -123,8 +271,8 @@ local function set_ammo(player, class)
 			end
 		end
 	end
-	weapons.player_list[pname].blocks = base_class.stats.blocks
-	weapons.player_list[pname].blocks_max = base_class.stats.blocks
+	weapons.player_list[pname].blocks = stats.blocks
+	weapons.player_list[pname].blocks_max = stats.blocks
 	weapons.player_list[pname].fatigue = 0
 	weapons.player_list[pname].fatigue_max = 100
 end
@@ -243,6 +391,7 @@ minetest.register_on_joinplayer(function(player)
 	weapons.player_list[pname] = {}
 	-- Fix aim not working
 	weapons.player_list[pname].aim_mode = false
+	weapons.player_list[pname].anim_mode = false -- true == alternate animation, false == regular
 
 	-- Create a class things
 	if true then
@@ -254,16 +403,14 @@ minetest.register_on_joinplayer(function(player)
 		weapons.player_list[pname].creator.jump_base = weapons.creator.jump_base
 		weapons.player_list[pname].creator.weight_base = weapons.creator.weight_base
 		weapons.player_list[pname].creator.blocks = weapons.creator.blocks_base
-		weapons.player_list[pname].creator.perk_one = 1
-		weapons.player_list[pname].creator.perk_two = 1
 		weapons.player_list[pname].creator.weapon_pri = 1
 		weapons.player_list[pname].creator.weapon_sec = 1
 		weapons.player_list[pname].creator.weapon_gre = 1
 	end
 
 	weapons.assign_team(player, nil)
-	weapons.set_player_texture(player)
-	minetest.after(2, weapons.player.set_class, player, "assault")
+	local weapon_lists = weapons.creator.generate_weapons_list(player)
+	minetest.show_formspec(pname, "create_a_class", create_a_class..weapon_lists)
 	player:set_nametag_attributes({
 		color = "#00000000"
 	})
@@ -283,34 +430,41 @@ local arms_pos  = vector.new(0,10,0)
 local arms_rot  = vector.new(0,0,0)
 local nulvec    = vector.new(0,0,0)
 
-function weapons.player.set_class(player, class)
+function weapons.player.set_class(player, class_items, class_stats)
 	local pname = player:get_player_name()
 
+	--weapons.player_list[pname].class = {stats = table.copy(class_stats), items = table.copy(class_items)}
+	--set_player_physics(player, class)
 	-- Clear inv:
 	clear_inv(player)
-	set_player_physics(player, class)
-	set_health(player, class)
-	weapons.player_list[pname].class = class
-	set_ammo(player, class)
-	add_class_items(player, class)
+	set_health(player, class_stats)
+	set_ammo(player, class_items)
+	add_class_items(player, class_items)
 
-	-- Add player body
+	weapons.set_player_texture(player)
+	
 	local ppos = player:get_pos()
-	weapons.player_body[pname] = minetest.add_entity(ppos, "weapons:player_body")
-	local plb_lae = weapons.player_body[pname]:get_luaentity()
-	plb_lae._player_ref = player
-	weapons.player_body[pname]:set_properties({textures = {weapons.player_list[pname].texture}})
-	weapons.player_body[pname]:set_attach(player, "",  nulvec, nulvec, true)
-	weapons.player_body[pname]:set_bone_position("Armature_Root", body_pos, body_rot)
-	weapons.player_body[pname]:set_bone_position("Armature_Legs", legs_pos, legs_rot)
+	-- Add player body
+	if weapons.player_body[pname] == nil then
+		weapons.player_body[pname] = minetest.add_entity(ppos, "weapons:player_body")
+		local plb_lae = weapons.player_body[pname]:get_luaentity()
+		plb_lae._player_ref = player
+		weapons.player_body[pname]:set_properties({textures = {weapons.player_list[pname].texture}})
+		weapons.player_body[pname]:set_attach(player, "",  nulvec, nulvec, true)
+		weapons.player_body[pname]:set_bone_position("Armature_Root", body_pos, body_rot)
+		weapons.player_body[pname]:set_bone_position("Armature_Legs", legs_pos, legs_rot)
+	end
 
-	-- Add wield arms
-	weapons.player_arms[pname] = minetest.add_entity(ppos, "weapons:player_arms")
-	local pla_lae = weapons.player_arms[pname]:get_luaentity()
-	pla_lae._player_ref = player
-	--weapons.player_arms[pname]:set_properties({textures = {"assault_class_" .. weapons.player_list[pname].team .. ".png", pla_lae._texture}})
-	weapons.player_arms[pname]:set_attach(player, "", nulvec, nulvec, true)
-	weapons.player_arms[pname]:set_bone_position("Armature_Root", arms_pos, arms_rot)
+	if weapons.player_arms[pname] == nil then
+		-- Add wield arms
+		weapons.player_arms[pname] = minetest.add_entity(ppos, "weapons:player_arms")
+		local pla_lae = weapons.player_arms[pname]:get_luaentity()
+		pla_lae._player_ref = player
+		--weapons.player_arms[pname]:set_properties({textures = {"assault_class_" .. weapons.player_list[pname].team .. ".png", pla_lae._texture}})
+		weapons.player_arms[pname]:set_attach(player, "", nulvec, nulvec, true)
+		weapons.player_arms[pname]:set_bone_position("Armature_Root", arms_pos, arms_rot)
+	end
+
 	player:set_properties({
 		visual = "mesh",
 		mesh = "player_head.x",
@@ -320,7 +474,7 @@ function weapons.player.set_class(player, class)
 		visual_size = {x=1.05, y=1.05},
 		collisionbox = {-0.3, 0.0, -0.3, 0.3, 1.77, 0.3},
 		nametag = "",
-		stepheight = 1.1,
+		--stepheight = 1.1,
 		eye_height = weapons.default_eye_height,
 	})	
 	player:set_bone_position("Armature_Root", head_pos, head_rot)
@@ -343,7 +497,7 @@ minetest.register_chatcommand("respawn", {
 	description = "Respawn back to base if stuck.",
 	func = function(name, param)
 		local player = minetest.get_player_by_name(name)
-		weapons.kill_player(player, player, {_localisation ={name="Suicide Pill"}}, 0)
+		weapons.kill_player(player, player, {_localisation = {name="Suicide Pill"}}, 0)
 	end,
 })
 
@@ -353,8 +507,14 @@ local function unlock_anim(pname)
 end
 
 local function unlock_arms(pname)
-		arm_frame[pname] = -1
-		arm_type[pname] = "idle"
+	arm_frame[pname] = -1
+	arm_type[pname] = "idle"
+
+	--if solarsail.controls.player[pname].LMB then
+		local curr_anim, spd, bl, loop = weapons.player_arms[pname]:get_animation()
+		curr_anim.x = curr_anim.y
+		weapons.player_arms[pname]:set_animation(curr_anim, 60, 0.15, false)
+	--end
 end
 
 local function reset_arm_pos(pname, weapon)
@@ -491,27 +651,38 @@ minetest.register_globalstep(function(dtime)
 
 			if weapon == nil then
 			else
+				local ammo = weapon._ammo_type
 				if weapon._anim == nil then
 				elseif arm_frame[pname] == -1 then
-					local result_frames
 					if weapons.is_reloading[pname][wield] == nil then
 					elseif weapons.is_reloading[pname][wield] then
-						arm_frame[pname] = 0
-						arm_type[pname] = "reload"
-						arm_after[pname] = minetest.after(weapon._reload + 0.03, unlock_arms, pname)
-						if weapons.player_arms[pname] ~= nil then
-							weapons.player_arms[pname]:set_animation(weapon._anim.reload, 60, 0.15, true)
+						if not weapons.player_list[pname].anim_mode then
+							arm_frame[pname] = 0
+							arm_type[pname] = "reload"
+							arm_after[pname] = minetest.after(weapon._reload, unlock_arms, pname)
+							if weapons.player_arms[pname] ~= nil then
+								weapons.player_arms[pname]:set_animation(weapon._anim.reload, 60, 0.15, true)
+							end
+						else
+							arm_frame[pname] = 0
+							arm_type[pname] = "reload_alt"
+							arm_after[pname] = minetest.after((weapon._reload*0.9), unlock_arms, pname)
+							if weapons.player_arms[pname] ~= nil then
+								weapons.player_arms[pname]:set_animation(weapon._anim.reload_alt, 60, 0.15, true)
+							end
 						end
 					elseif solarsail.controls.player[pname].RMB then -- Handle aiming
 						if solarsail.controls.player[pname].LMB then
-							arm_frame[pname] = 0
-							arm_type[pname] = "aim_fire"
-							arm_after[pname] = minetest.after(60 / weapon._rpm + 0.03, unlock_arms, pname)
-							if weapons.player_arms[pname] ~= nil then
-								weapons.player_arms[pname]:set_animation(weapon._anim.aim_fire, 60, 0.15, true)
+							if weapons.player_list[pname][ammo] > 0 or weapon._ammo_type == "blocks" then
+								arm_frame[pname] = 0
+								arm_type[pname] = "aim_fire"
+								arm_after[pname] = minetest.after((60 / weapon._rpm), unlock_arms, pname)
+								if weapons.player_arms[pname] ~= nil then
+									weapons.player_arms[pname]:set_animation(weapon._anim.aim_fire, 60, 0.15, true)
+								end
 							end
 						else
-							arm_frame[pname] = -1
+							--arm_frame[pname] = -1
 							arm_type[pname] = "aim"
 							if weapons.player_arms[pname] ~= nil then
 								weapons.player_arms[pname]:set_animation(weapon._anim.aim, 60, 0.15, true)
@@ -519,14 +690,16 @@ minetest.register_globalstep(function(dtime)
 						end
 					else
 						if solarsail.controls.player[pname].LMB then
-							arm_frame[pname] = 0
-							arm_type[pname] = "idle_fire"
-							arm_after[pname] = minetest.after(60 / weapon._rpm + 0.03, unlock_arms, pname)
-							if weapons.player_arms[pname] ~= nil then
-								weapons.player_arms[pname]:set_animation(weapon._anim.idle_fire, 60, 0.15, true)
+							if weapons.player_list[pname][ammo] > 0 or weapon._ammo_type == "blocks" then
+								arm_frame[pname] = 0
+								arm_type[pname] = "idle_fire"
+								arm_after[pname] = minetest.after((60 / weapon._rpm), unlock_arms, pname)
+								if weapons.player_arms[pname] ~= nil then
+									weapons.player_arms[pname]:set_animation(weapon._anim.idle_fire, 60, 0.15, true)
+								end
 							end
 						else
-							arm_frame[pname] = -1
+							--arm_frame[pname] = -1
 							arm_type[pname] = "idle"
 							if weapons.player_arms[pname] ~= nil then
 								weapons.player_arms[pname]:set_animation(weapon._anim.idle, 60, 0.15, true)
@@ -535,198 +708,6 @@ minetest.register_globalstep(function(dtime)
 					end
 				end
 			end
-		end
-	end
-end)
-
----------------------------------
----------------------------------
--- Create a class testing zone --
----------------------------------
----------------------------------
-
-weapons.creator.weapons = {}
-weapons.creator.weapons.primary = {}
-weapons.creator.weapons.secondary = {}
-weapons.creator.weapons.grenades = {}
-weapons.creator.perks = {}
-
-function weapons.creator.register_weapon(localisation, slot)
-	weapons.creator.weapons[slot][#weapons.creator.weapons[slot]+1] = localisation
-end
-
-function weapons.creator.generate_weapons_list(player)
-	local pname = player:get_player_name()
-	local pri_list, pri_tooltip, sec_list, sec_tooltip, gre_list, gre_tooltip = ""
-	local pri_index, sec_index, gre_index
-
-	-- Construct primary weapons dropdown and tooltip:
-	for index, localisation in pairs(weapons.creator.weapons.primary) do
-		if index ~= #weapons.creator.weapons.primary then
-			pri_list = pri_list .. localisation.name .. ","
-		else
-			pri_list = pri_list .. localisation.name .. ";"
-		end
-		
-		if index == weapons.player_list[pname].creator.weapon_pri then
-			pri_tooltip = "tooltip[0,0;5,1;"..localisation.tooltip.."]"
-			pri_index = index
-		end
-	end
-
-	-- Invalidate weapons that used to exist but no longer exist in updates,
-	-- ideally this should never happen but just in case classes are remembered between restarts
-	if #weapons.creator.weapons.primary < weapons.player_list[pname].creator.weapon_pri then
-		pri_tooltip = "tooltip[0,0;5,1;"..weapon.creator.weapons.primary[1].tooltip.."]"
-		print("[Weapons WARNING]: Weapon index is invalid. Potentially a missing weapon?")
-	end
-
-	local dropdown_pri = "dropdown[0,0;4;weapon_pri;"..pri_list..pri_index..";true]"
-
-	return dropdown_pri..pri_tooltip
-end
-
-function weapons.creator.register_perk(localisation)
-	weapons.creator.perks[#weapons.creator.perks+1] = localisation
-end
-
-function weapons.creator.generate_perk_list(player)
-	local pname = player:get_player_name()
-	local perk_list, tooltip_pri, tooltip_sec = ""
-	local index_pri, index_sec
-
-	for index, localisation in pairs(weapons.creator.perks) do
-		if index ~= #weapons.creator.perks then
-			perk_list = perk_list .. localisation.name .. ","
-		else
-			perk_list = perk_list .. localisation.name .. ";"
-		end
-
-		if index == weapons.player_list[pname].creator.perk_one then
-			tooltip_pri = "tooltip[0,3;5,1;"..localisation.tooltip.."]"
-			index_pri = index
-		end
-
-		if index == weapons.player_list[pname].creator.perk_two then
-			tooltip_sec = "tooltip[0,4;5,1;"..localisation.tooltip.."]"
-			index_sec = index
-		end
-
-	end
-
-	-- Disallow invalid perks that don't exist
-	if #weapons.creator.perks < weapons.player_list[pname].creator.perk_one then
-		tooltip_pri = "tooltip[0,3;5,1;"..weapons.creator.perks[1].tooltip.."]"
-		index_pri = 1
-		print("[Weapons WARNING]: Perk index is invalid. Potentially a missing perk?")
-	end
-
-	if #weapons.creator.perks < weapons.player_list[pname].creator.perk_two then
-		tooltip_sec = "tooltip[0,4;5,1;"..weapons.creator.perks[1].tooltip.."]"
-		index_sec = 1
-		print("[Weapons WARNING]: Perk index is invalid. Potentially a missing perk?")
-	end
-
-	local perks_pri = "dropdown[0,3;4;perk_pri;"..perk_list..index_pri..";true]"
-	local perks_sec = "dropdown[0,4;4;perk_sec;"..perk_list..index_sec..";true]"
-
-	return perks_pri..perks_sec..tooltip_pri..tooltip_sec
-end
-
-weapons.creator.register_perk({name="No Perk",tooltip="No perk equipped, costs 0 points. All perks cost 5 points.",var="no_perk"})
-weapons.creator.register_perk({name="Automated Reload Link",tooltip="Partially reloads magazine on kills for a minimum of one projectile.\nHeadshot kills reload the entire magazine.",var="auto_reload"})
-weapons.creator.register_perk({name="Block Fabricator",tooltip="Automaically generates 1 block ammo every 5 seconds.",var="block_fab"})
-weapons.creator.register_perk({name="Intergrated Medical Unit",tooltip="Regenerates 25 health every 20 seconds, and resets the cooldown when taking damage.",var="med_unit"})
-weapons.creator.register_perk({name="Tough Nut",tooltip="All damage is reduced by 10.",var="tough_nut"})
-weapons.creator.register_perk({name="Tungsten Boots",tooltip="Disables weapon knockback and explosive knockback.",var="tungsten_boot"})
-weapons.creator.register_perk({name="Smaller Frame",tooltip="10% smaller in size and hitbox.\nAll damage is increased by 20% more damage.\nYou'll also deal 20% less melee damage.",var="smol_frame"})
-weapons.creator.register_perk({name="Muscular Frame",tooltip="10% bigger in size and hitbox.\nYour accuracy spread is decreased by 1 node, and 20% better melee damage.",var="muscular"})
-weapons.creator.register_perk({name="Gambler",tooltip="5% chance not to take damage.\n5% chance to heal from damage.\n10% chance to take twice the damage after perk calculations.",var="gambler"})
-weapons.creator.register_perk({name="Dead Eye",tooltip="Pistols have their reload speeds halved, and have accuracy spread reduced by 1 node.",var="dead_eye"})
-weapons.creator.register_perk({name="Demolitionist",tooltip="Explosives have an increased blast radius of 3 nodes.\nExplosives also take an extra 25% longer to reload.",var="demoman"})
-weapons.creator.register_perk({name="Accelerationism",tooltip="SMG class weapons gain 250 RPM and have their accuracy spread increased by 1 node.",var="accelerator"})
-weapons.creator.register_perk({name="One Shot Wonder",tooltip="Sniper rifles and precision weapons deal 3x headshot damage.",var="one_shot"})
-weapons.creator.register_perk({name="Tungsten Rounds",tooltip="Assault and Burst Rifles can penetrate upto three nodes and or players.\nDoes not penetrate invulnerable nodes.",var="tungsten_shot"})
-weapons.creator.register_perk({name="Ordinance Defusal Plating",tooltip="All explosive damage is reduced by 75%.",var="eod"})
-
-local primary_weapons =
-	-- Rifles
-	"Assault Rifle,"..
-	"Burst Rifle,"..
-	"Marksman Rifle,"..
-	"Sniper Rifle,"..
-	-- SMGs
-	"PDW,"..
-	"Dual SMGs,"..
-	"Dual Micro SMGs,"..
-	-- Shotguns
-	"Super Shotgun,"..
-	"Semi Auto Shotgun,"..
-	"Precision Slug Shotgun,"..
-	-- Heavy Weapons (Restricts secondary and grenades)
-	"Minigun,"..
-	"Anti Materiel Rifle,"..
-	"HE Semi Auto Shotgun,"..
-	-- Explosives
-	"Rocket Launcher,"..
-	"Grenade Launcher,"..
-	-- Misc
-	"Medical Regenerator;"
-
-local secondary_weapons = 
-	-- Pistols
-	"Semi Auto Pistol,"..
-	"Auto Pistol,"..
-	"Heavy Pistol,"..
-	"Revolver,"..
-	"Dual Revolvers,"..
-	"Silenced Pistol,"..
-	--SMGs
-	"Micro SMG,"..
-	"SMG,"..
-	-- Misc
-	"Sawn Off Shotgun,"..
-	"Medical Injector;"
-
-local grenades =
-	"Frag Grenade,"..
-	"Sticky Grenade,"..
-	"Smoke Grenade,"..
-	"Disorientation Grenade,"..
-	"Expanding Grenade,"..
-	"Repair Grenade,"..
-	"Medical Grenade,"..
-	"Inferno Grenade,"..
-	"Cryo Grenade;"
-
---local pri_drop = "dropdown[0,0;4;weapon_pri;"..primary_weapons
-local sec_drop = "dropdown[0,1;4;weapon_sec;"..secondary_weapons
-local gre_drop = "dropdown[0,2;4;weapon_gre;"..grenades
-
-local create_a_class = 
-	"size[12,8]"
-	--"dropdown[0,0;4;weapon_pri;"..primary_weapons.."1;true]"..
-	--"dropdown[0,1;4;weapon_sec;"..secondary_weapons.."1;true]"..
-	--"dropdown[0,2;4;weapon_gre;"..grenades.."1;true]"
-
-minetest.register_chatcommand("creator", {
-	description = "create a class, will respawn you.",
-	func = function(name, param)
-		local weapon_lists = weapons.creator.generate_weapons_list(minetest.get_player_by_name(name))
-		local player_perks = weapons.creator.generate_perk_list(minetest.get_player_by_name(name))
-		minetest.show_formspec(name, "create_a_class", create_a_class..weapon_lists..player_perks)
-		--local player = minetest.get_player_by_name(name)
-		--weapons.kill_player(player, player, {_localisation={name="Suicide Pill"}}, 0)
-	end,
-})
-
-minetest.register_on_player_receive_fields(function(player, 
-	formname, fields)
-	local pname = player:get_player_name()
-	if formname == "create_a_class" then
-		if fields.save_changes then
-			local player = minetest.get_player_by_name(name)
-			weapons.kill_player(player, player, {_localisation={name="Suicide Pill"}}, 0)
 		end
 	end
 end)

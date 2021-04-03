@@ -1,3 +1,10 @@
+--[[
+ NOTE:
+
+ Topping off reloads are always 10% faster than an empty magazine.
+
+]]-- 
+
 local function no_drop_place(itemstack)
 	return itemstack
 end
@@ -40,7 +47,7 @@ function weapons.energy_overheat(player, weapon, wield, keypressed)
 	local pname = player:get_player_name()
 	if not weapons.is_reloading[pname][wield] then
 		weapons.is_reloading[pname][wield] = true
-
+		weapons.player_list[pname].anim_mode = false
 		minetest.after(weapon._reload, weapons.finish_energy_weapon, player, weapon, wield, false)
 
 		minetest.sound_play({name=weapon._reload_sound},
@@ -61,6 +68,7 @@ function weapons.veteran_reload(player, weapon, wield, keypressed)
 		if weapons.player_list[pname][ammo] == 0 then
 			if not weapons.is_reloading[pname][wield] then
 				weapons.is_reloading[pname][wield] = true
+				weapons.player_list[pname].anim_mode = false
 				minetest.after(weapon._reload, weapons.finish_magazine, player, weapon, wield, false)
 				minetest.sound_play({name=weapon._reload_sound},
 					{object=player, max_hear_distance=8, gain=0.32})
@@ -83,9 +91,11 @@ function weapons.magazine_reload(player, weapon, wield, keypressed)
 			if weapons.player_list[pname][ammo] >= 0 then
 				local chambered = false
 				local chamber_bonus = 1 -- Normal reload speed
+				weapons.player_list[pname].anim_mode = false
 				if weapons.player_list[pname][ammo] > 0 then -- Ensure there's a round in the chamber
 					chambered = true
 					chamber_bonus = 0.9
+					weapons.player_list[pname].anim_mode = true
 				end
 				weapons.player_list[pname][ammo] = 0
 				if not weapons.is_reloading[pname][wield] then
@@ -96,7 +106,7 @@ function weapons.magazine_reload(player, weapon, wield, keypressed)
 					if weapon._no_reload_hud then
 					else
 						player:hud_change(weapons.player_huds[pname].ammo.reloading, 
-							"text", "reloading.png")
+						"text", "reloading.png")
 					end
 				end
 			end
@@ -158,9 +168,11 @@ function weapons.tube_reload(player, weapon, wield, keypressed)
 			if not weapons.is_reloading[pname][wield] then
 				weapons.is_reloading[pname][wield] = true
 				if weapons.player_list[pname][ammo] == 0 then
-					minetest.after(weapon._reload*1.1, weapons.finish_tube, player, weapon, wield)
-				else
 					minetest.after(weapon._reload, weapons.finish_tube, player, weapon, wield)
+					weapons.player_list[pname].anim_mode = false
+				else
+					minetest.after(weapon._reload*0.9, weapons.finish_tube, player, weapon, wield)
+					weapons.player_list[pname].anim_mode = true
 				end
 				minetest.sound_play({name=weapon._reload_sound},
 					{object=player, max_hear_distance=8, gain=0.15})

@@ -145,7 +145,7 @@ Range 150 nodes.]],
 	_pellets = 9,
 	_mag = 6,
 	_rpm = wep_rpm,
-	_reload = 0.65,
+	_reload = 1,
 	_speed = 1200,
 	_range = 150,
 	_damage = 25,
@@ -172,16 +172,17 @@ Range 150 nodes.]],
 
 	-- Arm Animations + Arm visual settings;
 	_anim = {
-		idle = {x=0, y=0},
-		idle_fire = {x=0, y=8},
-		aim = {x=10, y=10},
-		aim_fire = {x=10, y=18},
-		reload = {x=60, y=219}
+		idle = {x=0, y=179},
+		idle_fire = {x=190, y=237},
+		aim = {x=250, y=429},
+		aim_fire = {x=440, y=487},
+		reload = {x=500, y=559},
+		reload_alt = {x=570, y=619} -- 10% faster btw
 	},
 	_arms = {
-		mesh = "assault_arms.x",
+		mesh = "arms_shotgun.x",
 		skin_pos = 1,
-		textures = {"transarent.png", "assault_rifle.png"},
+		textures = {"transarent.png", "rubber.png", "steel_dark.png", "steel_light.png", "steel_grey.png", "sight_green.png"},
 	},
 	on_fire = weapons.raycast_bullet,
 	on_fire_visual = add_extras,
