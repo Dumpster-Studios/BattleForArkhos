@@ -49,7 +49,7 @@ function plas_ent:collide(self, moveresult)
 				return
 			else
 				dist = solarsail.util.functions.pos_to_dist(self._player_ref:get_pos(), ppos)
-				weapons.handle_damage(weapon, self._player_ref, player, dist)
+				weapons.handle_damage(weapon, self._player_ref, player, dist, nil)
 			end
 		end
 	end

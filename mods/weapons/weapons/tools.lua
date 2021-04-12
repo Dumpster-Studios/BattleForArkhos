@@ -8,7 +8,6 @@ minetest.register_node("weapons:pickaxe", {
 	range = 3,
 	node_placement_prediction = "",
 
-	_ammo_bg = "block_bg",
 	_ammo_type = "blocks",
 	_kf_name = "Pickaxe",
 	_alt_mode = "weapons:pickaxe_alt",
@@ -99,7 +98,6 @@ minetest.register_node("weapons:flag_red", {
 	node_placement_prediction = "",
 	stack_max = 1,
 	
-	_ammo_bg = "flag_bg",
 	_kf_name = "motherfuckin' Red Flag",
 	_fov_mult = 0,
 	_type = "flag",
@@ -143,7 +141,6 @@ minetest.register_node("weapons:flag_blue", {
 	node_placement_prediction = "",
 	stack_max = 1,
 
-	_ammo_bg = "flag_bg",
 	_kf_name = "motherfuckin' Blue Flag",
 	_fov_mult = 0,
 	_type = "flag",

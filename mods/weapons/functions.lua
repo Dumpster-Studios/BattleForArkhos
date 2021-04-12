@@ -14,6 +14,25 @@ function weapons.get_nick(player)
 end
 
 --[[
+	solarsail.util.function.normalize_pos()
+		
+	pos_a = vector.new(); considered the zero point
+	pos_b = vector.new(); considered the space around the zero point
+	returns pos_b localised by pos_a.
+]]
+
+function solarsail.util.functions.get_local_pos(pos_a, pos_b)
+	local pa = table.copy(pos_a)
+	local pb = table.copy(pos_b)
+	local res = vector.new(
+		pb.x - pa.x,
+		pb.y - pa.y,
+		pb.z - pa.z
+	)
+	return res
+end
+
+--[[
 	solarsail.util.functions.convert_from_hex()
 
 	input = ColorSpec
@@ -258,11 +277,12 @@ function weapons.respawn_player(player, respawn)
 	weapons.hud.remove_blackout(player)
 end
 
-function weapons.kill_player(player, target_player, weapon, dist)
-	weapons.update_killfeed(player, target_player, weapon, dist)
+function weapons.kill_player(player, target_player, weapon, dist, headshot)
+	weapons.update_killfeed(player, target_player, weapon, dist, headshot)
 	weapons.player_list[target_player:get_player_name()].hp = 0
 	weapons.player.cancel_reload(target_player)
 	weapons.hud.blackout(target_player)
+	weapons.creator.creator_to_class(player, player:get_player_name())
 	minetest.after(4.9, weapons.respawn_player, target_player, true)
 	minetest.after(5, weapons.reset_health, target_player)
 end

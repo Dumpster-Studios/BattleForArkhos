@@ -101,8 +101,13 @@ function weapons.magazine_reload(player, weapon, wield, keypressed)
 				if not weapons.is_reloading[pname][wield] then
 					weapons.is_reloading[pname][wield] = true
 					minetest.after(weapon._reload * chamber_bonus, weapons.finish_magazine, player, weapon, wield, chambered)
-					minetest.sound_play({name=weapon._reload_sound},
-						{object=player, max_hear_distance=8, gain=0.15})
+					if weapons.player_list[pname].anim_mode then
+						minetest.sound_play({name=weapon._reload_sound_alt},
+							{object=player, max_hear_distance=8, gain=0.15})
+					else
+						minetest.sound_play({name=weapon._reload_sound},
+							{object=player, max_hear_distance=8, gain=0.15})
+					end
 					if weapon._no_reload_hud then
 					else
 						player:hud_change(weapons.player_huds[pname].ammo.reloading, 
@@ -170,12 +175,15 @@ function weapons.tube_reload(player, weapon, wield, keypressed)
 				if weapons.player_list[pname][ammo] == 0 then
 					minetest.after(weapon._reload, weapons.finish_tube, player, weapon, wield)
 					weapons.player_list[pname].anim_mode = false
+					minetest.sound_play({name=weapon._reload_sound},
+						{object=player, max_hear_distance=8, gain=0.15})
 				else
 					minetest.after(weapon._reload*0.9, weapons.finish_tube, player, weapon, wield)
 					weapons.player_list[pname].anim_mode = true
+					minetest.sound_play({name=weapon._reload_sound_alt},
+						{object=player, max_hear_distance=8, gain=0.15})
 				end
-				minetest.sound_play({name=weapon._reload_sound},
-					{object=player, max_hear_distance=8, gain=0.15})
+
 				if weapon._no_reload_hud then
 				else
 					player:hud_change(weapons.player_huds[pname].ammo.reloading, 
@@ -332,7 +340,7 @@ function weapons.bullet_on_hit(pointed, player, weapon, target_pos, dist)
 		local diff = solarsail.util.functions.pos_to_dist(t_pos, target_pos)
 		if diff < 0.31 then
 			if pointed.ref:is_player() then
-				weapons.handle_damage(weapon, player, pointed.ref, dist)
+				weapons.handle_damage(weapon, player, pointed.ref, dist, pointed)
 			end
 		end
 	else
@@ -341,7 +349,7 @@ function weapons.bullet_on_hit(pointed, player, weapon, target_pos, dist)
 				local ppos = players:get_pos()
 				local splash_dist = solarsail.util.functions.pos_to_dist(ppos, pointed.intersection_point)
 				if splash_dist < 0.61 then
-					weapons.handle_damage(weapon, player, players, dist)
+					weapons.handle_damage(weapon, player, players, dist, nil)
 					return
 				end
 			end
@@ -394,7 +402,7 @@ end
 function weapons.melee_on_hit(pointed, player, weapon, target_pos, dist)
 	if pointed.type == "object" then
 		if pointed.ref:is_player() then
-			weapons.handle_damage(weapon, player, pointed.ref, dist)
+			weapons.handle_damage(weapon, player, pointed.ref, dist, pointed)
 		end
 	else
 		local nodedef = minetest.registered_nodes[minetest.get_node(target_pos).name]
@@ -463,7 +471,7 @@ end
 function weapons.flag_on_hit(pointed, player, weapon, target_pos, dist)
 	if pointed.type == "object" then
 		if pointed.ref:is_player() then
-			weapons.handle_damage(weapon, player, pointed.ref, dist)
+			weapons.handle_damage(weapon, player, pointed.ref, dist, pointed)
 		end
 	end
 end

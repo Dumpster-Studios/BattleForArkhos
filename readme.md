@@ -36,10 +36,9 @@ Tablet / Phone users: good luck.
 On the experimental development server. Coming soon. Ish.
 
 ## Badges of ~~dis~~Honour:
-![lines of code](https://img.shields.io/tokei/lines/github/jordach/SolarSail?label=lines%20of%20code%20%28including%203d%20models%29)
-![number of fucks](https://img.shields.io/github/search/jordach/SolarSail/fuck?label=number%20of%20fucks%20used%20%28including%20this%20one%29)
-![number of shits](https://img.shields.io/github/search/jordach/SolarSail/shit?label=number%20of%20shits%20used%20%28including%20this%20one%29)
-![number of cunts](https://img.shields.io/github/search/jordach/SolarSail/cunt?label=number%20of%20cunts%20used%20%28including%20this%20one%29)
-![number of locals used](https://img.shields.io/github/search/jordach/SolarSail/local?label=number%20of%20locals%20used%20used%20%28including%20this%20one%29)
+![lines of code](https://img.shields.io/tokei/lines/github/dumpster-studios/BattleForArkhos?label=lines%20of%20code%20%28including%203d%20models%29)
+![number of fucks](https://img.shields.io/github/search/dumpster-studios/BattleForArkhos/fuck?label=number%20of%20fucks%20used%20%28including%20this%20one%29)
+![number of shits](https://img.shields.io/github/search/dumpster-studios/BattleForArkhos/shit?label=number%20of%20shits%20used%20%28including%20this%20one%29)
+![number of cunts](https://img.shields.io/github/search/dumpster-studios/BattleForArkhos/cunt?label=number%20of%20cunts%20used%20%28including%20this%20one%29)
 
 If you want your own, go to [shields.io](http://shields.io).

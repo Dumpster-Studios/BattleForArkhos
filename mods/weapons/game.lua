@@ -136,6 +136,7 @@ end
 
 local function remove_team_waypoint(id, team)
 	for _, player in ipairs(minetest.get_connected_players()) do
+		local pname = player:get_player_name()
 		if weapons.player_list[pname].waypoints[id] == nil then
 		elseif team == weapons.player_list[pname].team then
 			local pname = player:get_player_name()

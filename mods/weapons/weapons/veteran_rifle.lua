@@ -129,7 +129,6 @@ Range 200 nodes.]],
 	-- HUD / Visual
 	_tracer = "ar",
 	_name = "veteran_rifle",
-	_ammo_bg = "bullet_bg",
 	_crosshair = "assault_crosshair.png",
 	_crosshair_aim = "railgun_crosshair.png",
 	_fov_mult = 0,

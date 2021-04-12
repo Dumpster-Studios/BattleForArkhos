@@ -6,7 +6,8 @@
 		"weapons",
 		"core",
 		"VoxelArea",
-		"ItemStack"
+		"ItemStack",
+		"dump"
 	],
 	"Lua.diagnostics.disable": [
 		"undefined-field",

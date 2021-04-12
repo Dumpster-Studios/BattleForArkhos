@@ -98,9 +98,14 @@ end
 
 local function calc_ammo_bar_pos(player, weapon)
 	local pname = player:get_player_name()
-	if weapon._ammo_type == nil then 
+	if weapon._ammo_type == nil then
+		return 256
+	elseif weapons.player_list[pname][weapon._ammo_type.."_max"] == nil then
+		return 256
+	elseif weapons.player_list[pname][weapon._ammo_type] == nil then
 		return 256
 	else
+
 		return math.floor(
 			(256/weapons.player_list[pname][weapon._ammo_type.."_max"]) * weapons.player_list[pname][weapon._ammo_type]
 		)
@@ -149,13 +154,31 @@ local function hud_update_ammo(player, bar_pos, weapon)
 	else
 		local ammostring = ""
 		if weapon._is_energy == nil then
-			ammostring = 
-				weapons.player_list[pname][weapon._ammo_type] .. "/" .. weapons.player_list[pname][weapon._ammo_type.."_max"]
+			if weapons.player_list[pname][weapon._ammo_type.."_max"] == nil then
+				ammostring = "nil"
+			elseif weapons.player_list[pname][weapon._ammo_type] == nil then
+				ammostring = "nil"
+			else
+				ammostring = 
+					weapons.player_list[pname][weapon._ammo_type] .. "/" .. weapons.player_list[pname][weapon._ammo_type.."_max"]
+			end
 		elseif weapon._is_energy then
-			ammostring = weapons.player_list[pname][weapon._ammo_type] .. "%"
+			if weapons.player_list[pname][weapon._ammo_type.."_max"] == nil then
+				ammostring = "nil"
+			elseif weapons.player_list[pname][weapon._ammo_type] == nil then
+				ammostring = "nil"
+			else
+				ammostring = weapons.player_list[pname][weapon._ammo_type] .. "%"
+			end
 		else
-			ammostring = 
-				weapons.player_list[pname][weapon._ammo_type] .. "/" .. weapons.player_list[pname][weapon._ammo_type.."_max"]
+			if weapons.player_list[pname][weapon._ammo_type.."_max"] == nil then
+				ammostring = "nil"
+			elseif weapons.player_list[pname][weapon._ammo_type] == nil then
+				ammostring = "nil"
+			else
+				ammostring = 
+					weapons.player_list[pname][weapon._ammo_type] .. "/" .. weapons.player_list[pname][weapon._ammo_type.."_max"]
+			end
 		end
 		player:hud_change(weapons.player_huds[pname].ammo.ammo_count, "text", ammostring)
 
@@ -479,10 +502,25 @@ function weapons.hud.hide_hitmarker(player)
 		"transparent.png")
 end
 
-function weapons.hud.render_hitmarker(player)
-	player:hud_change(weapons.player_huds[player:get_player_name()].misc.hitmarker, "text",
-		"hitmarker.png")
-	minetest.after(0.25, weapons.hud.hide_hitmarker, player)
+-- Prevent overlapping afters
+local hitmarker_after = {}
+
+function weapons.hud.render_hitmarker(player, headshot)
+	local pname = player:get_player_name()
+
+	if headshot == nil then
+		player:hud_change(weapons.player_huds[pname].misc.hitmarker, "text", "hitmarker.png")
+	elseif headshot then
+		player:hud_change(weapons.player_huds[pname].misc.hitmarker, "text", "hitmarker_headshot.png")
+	else
+		player:hud_change(weapons.player_huds[pname].misc.hitmarker, "text", "hitmarker.png")
+	end
+
+	if hitmarker_after[pname] ~= nil then -- Cancel any outstanding hitmarker.
+		hitmarker_after[pname]:cancel()
+		hitmarker_after[pname] = nil
+	end
+	hitmarker_after[pname] = minetest.after(0.25, weapons.hud.hide_hitmarker, player)
 end
 
 -- This functions sole existance is to update waypoints if bases fail to generate on-time or properly

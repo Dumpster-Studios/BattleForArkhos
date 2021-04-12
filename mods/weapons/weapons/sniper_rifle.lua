@@ -15,17 +15,16 @@ weapons.register_weapon("weapons:sniper_rifle", true,
 
 Stats:
 
-65 Damage.
-3.76 second reload.
+85 Damage.
+5.3 second reload.
 Unaimed spread +- 25 nodes at maximum range.
 Aimed spread +- 0 nodes at maximum range.
-Range 200 nodes.]],
+Range 250 nodes.]],
 	},
 
 	-- HUD / Visual
 	_tracer = "railgun",
 	_name = "sniper_rifle",
-	_ammo_bg = "rail_bg",
 	_crosshair = "sniper_unaim.png",
 	_crosshair_aim = "railgun_crosshair.png",
 	_fov_mult = 0,
@@ -46,6 +45,7 @@ Range 200 nodes.]],
 	_speed = 1200,
 	_range = 250,
 	_damage = 85,
+	_headshot_multiplier = 2.5,
 	_movespeed = 0.85,
 	_movespeed_aim = 0.15,
 	_shots_used = shots_used,

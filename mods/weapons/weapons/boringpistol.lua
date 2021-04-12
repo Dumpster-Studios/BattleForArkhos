@@ -2,7 +2,9 @@
 -- Author: Jordach
 -- License: RESERVED
 
-local wep_rpm = 180
+
+local wep_rpm = 200
+
 local shots_used = 1
 
 weapons.register_weapon("weapons:boring_pistol", true,
@@ -25,6 +27,7 @@ Stats:
 Unaimed spread +- 5 nodes at maximum range.
 Aimed spread +- 2.5 nodes at maximum range.
 Range 100 nodes.]],
+		preview = "preview_boringpistol.obj"
 	},
 
 	-- HUD / Visual
@@ -34,12 +37,13 @@ Range 100 nodes.]],
 	_crosshair_aim = "railgun_crosshair.png",
 	_fov_mult = 0,
 	_fov_mult_aim = 0.9,
-	_min_arm_angle = -45,
-	_max_arm_angle = 75,
+	_min_arm_angle = -65,
+	_max_arm_angle = 70,
 	_arm_angle_offset = 0,
 	-- Sounds
-	_firing_sound = "ass_rifle_fire",
-	_reload_sound = "ass_rifle_reload",
+	_firing_sound = "bpistol_fire",
+	_reload_sound = "bpistol_reload",
+	_reload_sound_alt = "bpistol_reload_alt",
 	_casing = "Armature_Casing",
 	
 	-- Base Stats:
@@ -50,6 +54,7 @@ Range 100 nodes.]],
 	_speed = 1200,
 	_range = 100,
 	_damage = 18,
+	_headshot_multiplier = 1.5,
 	_movespeed = 1.1,
 	_movespeed_aim = 0.85,
 	_shots_used = shots_used,
@@ -62,7 +67,7 @@ Range 100 nodes.]],
 	_recoil_aim_factor = 0.5,
 
 	_fatigue = 15,
-	_fatigue_timer = 0.6,
+	_fatigue_timer = 0.06,
 	_fatigue_recovery = 0.95,
 	
 	_spread = 5,

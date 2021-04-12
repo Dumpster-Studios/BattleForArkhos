@@ -147,10 +147,10 @@ function rocket_ent:explode(self, moveresult)
 		if dist < 4.01 then
 			if player == self._player_ref then
 				rocket_damage._damage = rocket._damage/2.5
-				weapons.handle_damage(rocket_damage, self._player_ref, player, dist)
+				weapons.handle_damage(rocket_damage, self._player_ref, player, dist, nil)
 			else
 				dist = solarsail.util.functions.pos_to_dist(self._player_ref:get_pos(), ppos)
-				weapons.handle_damage(rocket_damage, self._player_ref, player, dist)
+				weapons.handle_damage(rocket_damage, self._player_ref, player, dist, nil)
 			end
 			-- Add player knockback:
 			solarsail.util.functions.apply_explosion_recoil(player, 25, pos)
@@ -202,7 +202,6 @@ local launcher_def_red = {
 
 	_no_reload_hud = true,
 	_reload_node = "weapons:rocket_launcher_reload_red",
-	_ammo_bg = "rocket_bg",
 	_kf_name = "Rocket Launcher",
 	_fov_mult = 0.95,
 	_crosshair = "railgun_crosshair.png",
@@ -247,7 +246,6 @@ local launcher_reload_red = {
 
 	_no_reload_hud = true,
 	_reset_node = "weapons:rocket_launcher_red",
-	_ammo_bg = "rocket_bg",
 	_kf_name = "Rocket Launcher",
 	_damage = 0,
 	_mag = 1,

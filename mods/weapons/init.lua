@@ -14,8 +14,8 @@ weapons.player = {} -- Some functions
 weapons.player_list = {} -- Current game related data
 weapons.player_data = {} -- Save data and config
 weapons.is_reloading = {} -- This should be part of player_list
-weapons.default_eye_height = 1.52 -- Defaults
-weapons.default_first_person_eyes = vector.new(0, 0, 1)
+weapons.default_eye_height = 1.57 -- Defaults
+weapons.default_first_person_eyes = vector.new(0, 0, 1.5)
 weapons.default_modchannel = "battleforarkhos_" -- Defaults
 
 -- Handle a one time file load at bootup to ensure data is properly loaded
@@ -119,7 +119,6 @@ function core.get_server_status(player_name, joined)
 	if solarsail.avg_dtime == nil or solarsail.avg_dtime == 0 then
 		local _chance = math.random(1, 100)
 		local _msg = "Excuse me, but why are you launching the server as a client?"
-		print(_chance)
 		if _chance < 11 then
 			-- https://discord.com/channels/369122544273588224/369122544273588226/807084993854701608
 			-- From @ElCeejus
@@ -172,7 +171,7 @@ end)
 
 -- TODO move into hud.lua
 
-function weapons.update_killfeed(player, dead_player, weapon, dist)
+function weapons.update_killfeed(player, dead_player, weapon, dist, headshot)
 	local tname = dead_player:get_player_name()
 	local pname = player:get_player_name()
 	local kill_verbs = {
@@ -186,7 +185,10 @@ function weapons.update_killfeed(player, dead_player, weapon, dist)
 		" booked ", " executed ", " mercy killed ", " stopped ",
 		" autistically screeched at ", " melted ", " #lounge'd ",
 		" moderated ", " banhammered ", " 13373D ",	" Flex Taped ",
-		" cronched ", " destroyed ", " blown out ", " sawn "
+		" cronched ", " destroyed ", " blown out ", " sawn ",
+		" leeroy'd ", " inverted ", " forever boxed ", " fucky wucky'd ",
+		" locked down ", " cringed ", " light theme'd", " I II II I_ ",
+		" vaccinated ", " VAC banned "
 	}
 	local special_verbs = { "'s Ankha killed " }
 	local suicide_verbs = {
@@ -200,19 +202,25 @@ function weapons.update_killfeed(player, dead_player, weapon, dist)
 	if tname == pname then
 		verb = math.random(1, #suicide_verbs)
 		form = death_formspec ..
-		"label[2,2;You" .. suicide_verbs[verb] .. "with the " .. weapon._localisation.name
-		minetest.chat_send_all(weapons.get_nick(player) .. suicide_verbs[verb] .. "with the " ..
+		"label[2,2;You" .. suicide_verbs[verb] .. "with your " .. weapon._localisation.name
+		minetest.chat_send_all(weapons.get_nick(player) .. suicide_verbs[verb] .. "with their " ..
 			weapon._localisation.name .. ".")
-		weapons.discord_send_message("**" .. weapons.get_nick(player) .. "**" .. suicide_verbs[verb] .. "with the "
+		weapons.discord_send_message("**" .. weapons.get_nick(player) .. "**" .. suicide_verbs[verb] .. "with their "
 			.. weapon._localisation.name .. ".")
 	else
 		verb = math.random(1, #kill_verbs)
 		form = death_formspec ..
 		"label[2,2;You " .. kill_verbs[verb] .. "by: "..pname.."]"
-		minetest.chat_send_all(weapons.get_nick(player) .. kill_verbs[verb] .. weapons.get_nick(dead_player) .. " with the " .. weapon._localisation.name
-		.. ", (" .. (math.floor(dist * figs + 0.5) / 100) .. "m)")
-		weapons.discord_send_message("**" .. weapons.get_nick(player) .. "**" .. kill_verbs[verb] .. weapons.get_nick(dead_player) .. " with the " .. weapon._localisation.name
-		.. ", (" .. (math.floor(dist * figs + 0.5) / 100) .. "m)")
+
+		local msg = kill_verbs[verb] .. weapons.get_nick(dead_player) .. " with the " .. weapon._localisation.name
+		local dist_msg = "(" .. (math.floor(dist * figs + 0.5) / 100) .. "m)"
+		if headshot then
+			msg = msg .. ", with a headshot. " .. dist_msg
+		else
+			msg = msg .. ". " .. dist_msg
+		end
+		minetest.chat_send_all(weapons.get_nick(player) .. msg)
+		weapons.discord_send_message("**" .. weapons.get_nick(player) .. "**" .. msg)
 	end
 
 	minetest.show_formspec(tname, "death", form)
@@ -220,16 +228,36 @@ end
 
 
 -- TODO move to a more suitable place than functions.lua
-function weapons.handle_damage(weapon, player, target_player, dist)
+function weapons.handle_damage(weapon, player, target_player, dist, pointed)
 	local pname = player:get_player_name()
 	local tname = target_player:get_player_name()
 	if weapons.player_list[tname].hp == nil then return end
-	local new_hp = weapons.player_list[tname].hp - weapon._damage
+	local new_hp = weapons.player_list[tname].hp 
+	local is_headshot = false
 	
-	print(weapons.player_list[tname].hp, new_hp, tname)
+	if pointed == nil then -- Exposions, bullet magnetism are ineligible for headshots
+		new_hp = new_hp - weapon._damage
+	else
+		local pos = target_player:get_pos()
+		local ray_pos = pointed.intersection_point
+		local real_pos = solarsail.util.functions.get_local_pos(pos, ray_pos)
 
-	--if weapons.player_list[tname] == 0 then
-		--weapons.player_list[tname].hp = weapons.player_list[tname].hp_max
+		-- (1.77/32)*24 -- player head height
+		-- this looks like a real magic value, but really it isn't.
+		-- it's just counting the total number of pixels the player has divided by the height of the collision box
+		if real_pos.y > (1.77/32)*24 then
+			if weapon._headshot_multiplier == nil then
+				-- 50% damage buff if unspecified.
+				new_hp = new_hp - (weapon._damage * 1.5)
+			else
+				new_hp = new_hp - (weapon._damage * weapon._headshot_multiplier)
+			end
+			is_headshot = true
+		else
+			new_hp = new_hp - weapon._damage
+		end
+	end
+
 	if weapons.player_list[tname].hp < 1 then
 		return
 	end
@@ -250,21 +278,21 @@ function weapons.handle_damage(weapon, player, target_player, dist)
 	if weapons.player_list[pname].team ~=
 			weapons.player_list[tname].team then
 		if new_hp < 1 then
-			weapons.kill_player(player, target_player, weapon, dist)
-			weapons.hud.render_hitmarker(player)
-			minetest.sound_play("hitsound", {to_player=pname})
-			minetest.sound_play("player_impact", {pos=target_player:get_pos(),
-				max_hear_distance=6, gain=0.85})
+			weapons.kill_player(player, target_player, weapon, dist, is_headshot)
 		else
 			weapons.player_list[tname].hp = new_hp
-			weapons.hud.render_hitmarker(player)
-			minetest.sound_play("hitsound", {to_player=pname})	
-			minetest.sound_play("player_impact", {pos=target_player:get_pos(),
-				max_hear_distance=6, gain=0.98})
 		end
+		weapons.hud.render_hitmarker(player, is_headshot)
+		if is_headshot then
+			minetest.sound_play("hitsound_headshot", {to_player=pname})
+		else
+			minetest.sound_play("hitsound", {to_player=pname})
+		end
+		minetest.sound_play("player_impact", {pos=target_player:get_pos(),
+			max_hear_distance=6, gain=0.85})
 	elseif pname == tname then
 		if new_hp < 1 then
-			weapons.kill_player(player, player, weapon, dist)
+			weapons.kill_player(player, player, weapon, dist, false)
 			minetest.sound_play("player_impact", {pos=target_player:get_pos(),
 				max_hear_distance=6, gain=0.85})
 		else
@@ -274,7 +302,7 @@ function weapons.handle_damage(weapon, player, target_player, dist)
 		if weapon._heals == nil then return 
 		else
 			weapons.player_list[tname].hp = new_hp
-			weapons.hud.render_hitmarker(player)
+			weapons.hud.render_hitmarker(player, true)
 			minetest.sound_play("hitsound", {to_player=pname})
 			minetest.sound_play("player_heal", {pos=target_player:get_pos(),
 				max_hear_distance=6, gain=0.98})
