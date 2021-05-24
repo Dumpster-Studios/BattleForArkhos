@@ -84,7 +84,7 @@ function weapons.spray_particles(pointed, nodedef, target_pos, node_destroyed)
 	local size_min, size_max = 0.95, 1.55
 	local vel_min, vel_max = -1.5, 1.5
 	local del_min, del_max = 2.5, 3.75
-	local nparticles = math.random(3, 6)
+	local nparticles = math.random(2, 3)
 	local pnt = nil
 
 	if destroyed then
