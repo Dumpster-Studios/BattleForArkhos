@@ -318,9 +318,9 @@ function weapons.creator.player_stats(player, pname)
 	local helmet_dropdown = "dropdown[20.5,6.5;3;armour_chooser;Default Helmet,Unlockable Helmet,Placeholder Hemlet;"..helmet_index..";true]"
 	local armour_dropdown = "dropdown[20.5,7.5;3;armour_chooser;Default Armour,Unlockable Armour,Placeholder Armour;"..armour_index..";true]"
 	local undersuit_dropdown = "dropdown[20.5,8.5;3;undersuit_chooser;Default Undersuit,Unlockable Undersuit,Placeholder Undersuit;"..undersuit_index..";true]"
+	local enable_custom_skin = "checkbox[21,10;custom_skin;Hide User Head;]"
 
-
-	return 
+	return
 		points_label..
 		lbl_hp..
 		cost_hp..
@@ -345,8 +345,8 @@ function weapons.creator.player_stats(player, pname)
 		player_preview..
 		undersuit_dropdown..
 		armour_dropdown..
-		helmet_dropdown
-
+		helmet_dropdown..
+		enable_custom_skin
 end
 
 function weapons.creator.display_formspec(pname, player, fields)
@@ -709,15 +709,18 @@ local function unlock_anim(pname)
 	anim_frame[pname] = -1
 end
 
-local function unlock_arms(pname)
+local function unlock_arms(pname, weapon)
+	-- if solarsail.controls.player[pname].LMB then
+	-- 	local curr_anim, spd, bl, loop = weapons.player_arms[pname]:get_animation()
+	-- 	curr_anim.x = curr_anim.y
+	-- 	weapons.player_arms[pname]:set_animation(curr_anim, 60, 0.15, false)
+	-- else
+	-- 	local curr_anim, spd, bl, loop = weapons.player_arms[pname]:get_animation()
+	-- 	weapons.player_arms[pname]:set_animation({x=curr_anim.x, y=curr_anim.x+1}, 60, 0, false)
+	-- end
+
 	arm_frame[pname] = -1
 	arm_type[pname] = "idle"
-
-	--if solarsail.controls.player[pname].LMB then
-		local curr_anim, spd, bl, loop = weapons.player_arms[pname]:get_animation()
-		curr_anim.x = curr_anim.y
-		weapons.player_arms[pname]:set_animation(curr_anim, 60, 0.15, false)
-	--end
 end
 
 local function reset_arm_pos(pname, weapon)
@@ -746,7 +749,7 @@ minetest.register_globalstep(function(dtime)
 		local pname = player:get_player_name()
 		local wield = player:get_wielded_item():get_name()
 		local weapon = minetest.registered_nodes[wield]
-		if true then -- Legs/Body, Head anim foldable for your viewing pleasure
+		if true then -- Legs/Body, Head anim; foldable for your viewing pleasure
 			local ppitch = -math.deg(player:get_look_vertical())
 			local frame_offset = 0
 			local anim_group
@@ -758,13 +761,12 @@ minetest.register_globalstep(function(dtime)
 				if weapon == nil then
 				elseif weapon._min_arm_angle == nil then
 				elseif weapon._max_arm_angle == nil then
-				else
+				elseif weapons.is_reloading[pname][wield] then
+					-- Prevent arm rotations when the entity doesn't
+					-- exist
 					if weapons.player_arms[pname] ~= nil then
-						if ppitch > weapon._max_arm_angle then
-							ppitch = weapon._max_arm_angle
-						elseif ppitch < weapon._min_arm_angle then
-							ppitch = weapon._min_arm_angle
-						end
+						local ret_pitch = look_pitch[pname] * 0.5
+
 						--Manually control arms bone here
 						local bpos = arms_pos
 						if weapon._arms.pos ~= nil then
@@ -773,8 +775,33 @@ minetest.register_globalstep(function(dtime)
 						weapons.player_arms[pname]:set_bone_position(
 							"Armature_Root",
 							bpos,
-							{x=ppitch+arms_rot.x, y=arms_rot.y, z=arms_rot.z}
+							{x=ret_pitch+arms_rot.x, y=arms_rot.y, z=arms_rot.z}
 						)
+						-- again, avoid Lua aliasing
+						look_pitch[pname] = ret_pitch+0
+					end
+				else
+					if weapons.player_arms[pname] ~= nil then
+						-- Prevent arm rotations when the entity doesn't
+						-- exist
+						if weapons.is_reloading[pname][wield] then
+						else
+							if ppitch > weapon._max_arm_angle then
+								ppitch = weapon._max_arm_angle
+							elseif ppitch < weapon._min_arm_angle then
+								ppitch = weapon._min_arm_angle
+							end
+							--Manually control arms bone here
+							local bpos = arms_pos
+							if weapon._arms.pos ~= nil then
+								bpos = weapon._arms.pos
+							end
+							weapons.player_arms[pname]:set_bone_position(
+								"Armature_Root",
+								bpos,
+								{x=ppitch+arms_rot.x, y=arms_rot.y, z=arms_rot.z}
+							)
+						end
 					end
 				end
 			end
@@ -869,14 +896,14 @@ minetest.register_globalstep(function(dtime)
 						if not weapons.player_list[pname].anim_mode then
 							arm_frame[pname] = 0
 							arm_type[pname] = "reload"
-							arm_after[pname] = minetest.after(weapon._reload, unlock_arms, pname)
+							arm_after[pname] = minetest.after(weapon._reload, unlock_arms, pname, weapon)
 							if weapons.player_arms[pname] ~= nil then
 								weapons.player_arms[pname]:set_animation(weapon._anim.reload, 60, 0.15, true)
 							end
 						else
 							arm_frame[pname] = 0
 							arm_type[pname] = "reload_alt"
-							arm_after[pname] = minetest.after((weapon._reload*0.9), unlock_arms, pname)
+							arm_after[pname] = minetest.after((weapon._reload*0.9), unlock_arms, pname, weapon)
 							if weapons.player_arms[pname] ~= nil then
 								weapons.player_arms[pname]:set_animation(weapon._anim.reload_alt, 60, 0.15, true)
 							end
@@ -886,14 +913,12 @@ minetest.register_globalstep(function(dtime)
 							if weapons.player_list[pname][ammo] > 0 or ammo == "blocks" then
 								arm_frame[pname] = 0
 								arm_type[pname] = "aim_fire"
-								arm_after[pname] = minetest.after((60 / weapon._rpm), unlock_arms, pname)
+								arm_after[pname] = minetest.after((60 / weapon._rpm), unlock_arms, pname, weapon)
 								if weapons.player_arms[pname] ~= nil then
 									weapons.player_arms[pname]:set_animation(weapon._anim.aim_fire, 60, 0.15, true)
 								end
 							end
 						else
-							--arm_frame[pname] = -1
-							arm_type[pname] = "aim"
 							if weapons.player_arms[pname] ~= nil then
 								weapons.player_arms[pname]:set_animation(weapon._anim.aim, 60, 0.15, true)
 							end
@@ -903,13 +928,12 @@ minetest.register_globalstep(function(dtime)
 							if weapons.player_list[pname][ammo] > 0 or ammo == "blocks" then
 								arm_frame[pname] = 0
 								arm_type[pname] = "idle_fire"
-								arm_after[pname] = minetest.after((60 / weapon._rpm), unlock_arms, pname)
+								arm_after[pname] = minetest.after((60 / weapon._rpm), unlock_arms, pname, weapon)
 								if weapons.player_arms[pname] ~= nil then
 									weapons.player_arms[pname]:set_animation(weapon._anim.idle_fire, 60, 0.15, true)
 								end
 							end
 						else
-							--arm_frame[pname] = -1
 							arm_type[pname] = "idle"
 							if weapons.player_arms[pname] ~= nil then
 								weapons.player_arms[pname]:set_animation(weapon._anim.idle, 60, 0.15, true)

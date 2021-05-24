@@ -22,10 +22,10 @@ local function explosion_tracers(pos)
 								math.random(-100, 100)/100,
 								math.random(-100, 100)/100
 		)
-		if moveresult == nil then
-		elseif moveresult.touching_ground then
-			vector_mod.y = math.random(1, 100)/100
-		end			
+		--if moveresult == nil then
+		--elseif moveresult.touching_ground then
+			--vector_mod.y = math.random(1, 100)/100
+		--end			
 							
 		local rayend = vector.add(pos, vector_mod)
 		-- Tracers; performance heavy?
@@ -274,10 +274,8 @@ local function register_grenade(name, class, killfeed_name, stats)
 		range = 1,
 		node_placement_prediction = "",
 
-		_ammo_bg = "grenade",
 		_fov_mult = 0,
 		_crosshair = "railgun_crosshair.png",
-		_ammo_bg = "grenade_bg",
 		_type = "grenade",
 		_ammo_type = "grenade",
 		_phys_alt = 1,

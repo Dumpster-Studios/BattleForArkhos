@@ -92,10 +92,12 @@ function weapons.magazine_reload(player, weapon, wield, keypressed)
 				local chambered = false
 				local chamber_bonus = 1 -- Normal reload speed
 				weapons.player_list[pname].anim_mode = false
-				if weapons.player_list[pname][ammo] > 0 then -- Ensure there's a round in the chamber
-					chambered = true
-					chamber_bonus = 0.9
-					weapons.player_list[pname].anim_mode = true
+				if keypressed then
+					if weapons.player_list[pname][ammo] > 0 then -- Ensure there's a round in the chamber
+						chambered = true
+						chamber_bonus = 0.9
+						weapons.player_list[pname].anim_mode = true
+					end
 				end
 				weapons.player_list[pname][ammo] = 0
 				if not weapons.is_reloading[pname][wield] then

@@ -77,6 +77,7 @@ minetest.register_node(":core:water_source", {
 	liquid_viscosity = 1,
 	post_effect_color = {a = 153, r = 18, g = 78, b = 137},
 	groups = {water = 3, source = 1, puts_out_fire = 1, can_grow = 1},
+	_no_particles = true,
 })
 
 minetest.register_node(":core:water_flowing", {
@@ -122,6 +123,7 @@ minetest.register_node(":core:water_flowing", {
 	liquid_viscosity = 1,
 	post_effect_color = {a = 153, r = 18, g = 78, b = 137},
 	groups = {water = 3, flowing = 1, puts_out_fire = 1, can_grow = 1, not_in_creative_inventory = 1},
+	_no_particles = true,
 })
 
 -- Grasses:
@@ -142,6 +144,7 @@ for i=1, 3 do
 			type = "fixed",
 			fixed = {-0.5, -0.5, -0.5, 0.5, -5/16, 0.5},
 		},
+		_no_particles = true,
 		--sounds = mcore.sound_plants,
 	})
 end

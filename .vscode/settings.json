@@ -7,7 +7,8 @@
 		"core",
 		"VoxelArea",
 		"ItemStack",
-		"dump"
+		"dump",
+		"particulate"
 	],
 	"Lua.diagnostics.disable": [
 		"undefined-field",

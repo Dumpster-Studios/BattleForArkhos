@@ -184,12 +184,13 @@ end
 
 function weapons.calc_block_damage(nodedef, weapon, target_pos, pointed)
 	if nodedef == nil then
+		return 0, "air", nil
 	elseif nodedef.name == "air" then
 		return 0, "air", nil
 	elseif nodedef.name == "ignore" then
 		return 0, "air", nil
 	elseif nodedef._health == nil then
-		weapons.spray_particles(pointed, nodedef, target_pos)
+		weapons.spray_particles(pointed, nodedef, target_pos, true)
 		return 0, "air", nil
 	elseif nodedef._takes_damage == nil then
 		local nodedamage
@@ -202,52 +203,31 @@ function weapons.calc_block_damage(nodedef, weapon, target_pos, pointed)
 		end
 
 		if nodedamage < 1 then
-			weapons.spray_particles(pointed, nodedef, target_pos)
+			weapons.spray_particles(pointed, nodedef, target_pos, true)
 			return 0, "air", nil
 		else
-			weapons.spray_particles(pointed, nodedef, target_pos)
+			weapons.spray_particles(pointed, nodedef, target_pos, false)
 			return nodedamage, nodedef._name.."_"..nodedamage, nil
 		end
 	else
-		weapons.spray_particles(pointed, nodedef, target_pos)
+		weapons.spray_particles(pointed, nodedef, target_pos, false)
 		return 0, nodedef.name, false
 	end
 end
 
-function weapons.spray_particles(pointed, nodedef, target_pos)
-	local npos, npos_floor
-	if pointed == nil then
-		npos = table.copy(target_pos)
-		npos_floor = table.copy(target_pos)
-		npos_floor.x = math.floor(npos_floor.x)
-		npos_floor.y = math.floor(npos_floor.y)
-		npos_floor.z = math.floor(npos_floor.z)
-	else
-		npos = table.copy(pointed.intersection_point)
-		npos_floor = table.copy(pointed.under)
+function weapons.create_2x2_node_texture(texture_string)
+	local xmod = math.random(-14, 0)
+	local ymod = math.random(-14, 0)
+	local splits = string.split(texture_string, "^")
+	local modifier = "[combine:2x2:"
+	for k, v in pairs(splits) do
+		if k ~= #splits then
+			modifier = modifier ..xmod..","..ymod.."="..v..":"
+		else
+			modifier = modifier ..xmod..","..ymod.."="..v
+		end
 	end
-	
-	if nodedef.tiles == nil then return end
-	minetest.add_particlespawner({
-		amount = math.random(8, 12),
-		time = 0.03,
-		texture = nodedef.tiles[1],
-		node = {name=minetest.get_node(npos_floor).name},
-		collisiondetection = true,
-		collision_removal = false,
-		object_collision = false,
-		vertical = false,
-		minpos = vector.new(npos.x-0.05,npos.y-0.05,npos.z-0.05),
-		maxpos = vector.new(npos.x+0.05,npos.y+0.05,npos.z+0.05),
-		minvel = vector.new(-1, -1, -1),
-		maxvel = vector.new(1, 1, 1),
-		minacc = vector.new(0,-5,0),
-		maxacc = vector.new(0,-5,0),
-		minsize = 0.95,
-		maxsize = 1.15,
-		minexptime = 1,
-		maxexptime = 3
-	})
+	return modifier
 end
 
 function weapons.reset_health(player)
@@ -259,7 +239,7 @@ end
 
 function weapons.respawn_player(player, respawn)
 	local pname = player:get_player_name()
-	local x, y, z = 0
+	local x, y, z = 0, 0, 0
 	local blu = 192-42
 	if weapons.player_list[pname].team == "red" then
 		x = math.random(168, 176)

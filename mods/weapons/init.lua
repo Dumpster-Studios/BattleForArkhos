@@ -348,6 +348,7 @@ dofile(minetest.get_modpath("weapons").."/skybox.lua")
 dofile(minetest.get_modpath("weapons").."/chat.lua")
 dofile(minetest.get_modpath("weapons").."/hud.lua")
 dofile(minetest.get_modpath("weapons").."/builtin_blocks.lua")
+dofile(minetest.get_modpath("weapons").."/particles.lua")
 dofile(minetest.get_modpath("weapons").."/weapons.lua")
 
 -- Player viewmodel settings:
@@ -379,6 +380,7 @@ dofile(minetest.get_modpath("weapons").."/weapons/plasma_autorifle.lua")
 dofile(minetest.get_modpath("weapons").."/weapons/light_machine_gun.lua")
 
 -- Exotic (Treated as Primary Slot)
+dofile(minetest.get_modpath("weapons").."/weapons/rocketry.lua")
 dofile(minetest.get_modpath("weapons").."/weapons/minigun.lua")
 
 -- Secondary
@@ -386,7 +388,6 @@ dofile(minetest.get_modpath("weapons").."/weapons/boringpistol.lua")
 
 
 --dofile(minetest.get_modpath("weapons").."/weapons/smg.lua")
---dofile(minetest.get_modpath("weapons").."/weapons/rocketry.lua")
 --dofile(minetest.get_modpath("weapons").."/weapons/grenades.lua")
 
 minetest.register_on_player_receive_fields(
