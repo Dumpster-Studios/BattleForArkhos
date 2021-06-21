@@ -322,8 +322,7 @@ function weapons.raycast_bullet(player, weapon)
 			else
 				local dist = solarsail.util.functions.pos_to_dist(raybegin, target_pos)
 
-				minetest.after(dist/weapon._speed, weapon.bullet_on_hit, pointed, player,
-					weapon, target_pos, dist)
+				weapon.bullet_on_hit(pointed, player, weapon, target_pos, dist)
 			end
 		end
 		weapons.player_list[pname].fatigue = weapons.player_list[pname].fatigue + weapon._fatigue
