@@ -33,6 +33,7 @@ weapons.register_weapon("weapons:fists", false,
 	--_casing = "Armature_Casing",
 	
 	-- Base Stats:
+	_fire_mode = "auto",
 	_pellets = 1,
 	--_mag = 0,
 	_rpm = wep_rpm,

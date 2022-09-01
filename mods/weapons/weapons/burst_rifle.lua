@@ -37,8 +37,6 @@ Stats:
 
 25 Damage per shot.
 2.85 second reload.
-Unaimed spread +- 3.75 nodes at maximum range.
-Aimed spread +- 0.5 nodes at maximum range.
 Range 150 nodes.]],
 	},
 
@@ -46,8 +44,8 @@ Range 150 nodes.]],
 	_tracer = "ar",
 	_name = "burst_rifle",
 	_ammo_bg = "bullet_bg",
-	_crosshair = "assault_crosshair.png",
-	_crosshair_aim = "railgun_crosshair.png",
+	_crosshair = "crosshair010.png",
+	_crosshair_aim = "crosshair008.png",
 	_fov_mult = 0,
 	_fov_mult_aim = 0.5,
 	_min_arm_angle = -45,
@@ -59,6 +57,7 @@ Range 150 nodes.]],
 	_casing = "Armature_Casing",
 	
 	-- Base Stats:
+	_fire_mode = "semi",
 	_pellets = 1,
 	_mag = 24,
 	_rpm = wep_rpm,
@@ -76,11 +75,11 @@ Range 150 nodes.]],
 	_recoil_hori = 3,
 	_recoil_factor = 0.8/2,
 	_recoil_aim_factor = 0.5/2,
-	
-	_spread = 5.75,
-	_spread_aim = 2.5,
 
-	_fatigue = 5,
+	_offset = {pitch_min=-1.35, pitch_max=1.35, yaw_min=-1.35, yaw_max=1.35},
+	_offset_aim = {pitch_min=-0.3, pitch_max=0.3, yaw_min=-0.3, yaw_max=0.3},
+
+	_fatigue = 10,
 	_fatigue_timer = 0.06,
 	_fatigue_recovery = 0.85,
 

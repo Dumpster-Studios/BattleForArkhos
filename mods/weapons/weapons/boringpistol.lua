@@ -3,7 +3,7 @@
 -- License: RESERVED
 
 
-local wep_rpm = 200
+local wep_rpm = 160
 
 local shots_used = 1
 
@@ -24,8 +24,6 @@ Stats:
 
 18 Damage.
 1.31 second reload.
-Unaimed spread +- 5 nodes at maximum range.
-Aimed spread +- 2.5 nodes at maximum range.
 Range 100 nodes.]],
 		preview = "preview_boringpistol.obj"
 	},
@@ -33,8 +31,8 @@ Range 100 nodes.]],
 	-- HUD / Visual
 	_tracer = "ar",
 	_name = "boring_pistol",
-	_crosshair = "assault_crosshair.png",
-	_crosshair_aim = "railgun_crosshair.png",
+	_crosshair = "crosshair010.png",
+	_crosshair_aim = "crosshair008.png",
 	_fov_mult = 0,
 	_fov_mult_aim = 0.9,
 	_min_arm_angle = -65,
@@ -47,6 +45,7 @@ Range 100 nodes.]],
 	_casing = "Armature_Casing",
 	
 	-- Base Stats:
+	_fire_mode = "semi",
 	_pellets = 1,
 	_mag = 12,
 	_rpm = wep_rpm,
@@ -73,6 +72,9 @@ Range 100 nodes.]],
 	_spread = 5,
 	_spread_aim = 2.5,
 
+	_offset = {pitch_min=-1.7, pitch_max=1.7, yaw_min=-1.7, yaw_max=1.7},
+	_offset_aim = {pitch_min=-0.65, pitch_max=0.65, yaw_min=-0.65, yaw_max=0.65},
+
 	_break_hits = 1,
 	_block_chance = 35,
 
@@ -86,6 +88,7 @@ Range 100 nodes.]],
 		reload_alt = {x=570, y=663},
 	},
 	_arms = {
+		ph = {min=vector.new(0, 9.5, 1.25), max=vector.new(0, 12, 1.45), center=vector.new(0, 9.9, -0.25)},
 		mesh = "arms_boringpistol.x",
 		skin_pos = 1,
 		textures = {"transarent.png", "rubber.png", "steel_dark.png", "steel_grey.png", "sight_green.png"},

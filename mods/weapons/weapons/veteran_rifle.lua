@@ -142,6 +142,7 @@ Range 200 nodes.]],
 	_casing = "Armature_Casing",
 	
 	-- Base Stats:
+	_fire_mode = "semi",
 	_pellets = 1,
 	_mag = 8,
 	_rpm = wep_rpm,

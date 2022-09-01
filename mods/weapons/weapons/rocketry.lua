@@ -48,6 +48,8 @@ local function launch_rocket(player, weapon)
 	local ammo = weapon._ammo_type
 
 	if weapons.player_list[pname][ammo] > 0 then
+		minetest.sound_play({name=weapon._firing_sound}, 
+			{pos=player:get_pos(), max_hear_distance=128, gain=14.75})
 		weapons.player_list[pname][ammo] = weapons.player_list[pname][ammo] - 1
 
 		local rocket_pos = vector.add(
@@ -61,8 +63,8 @@ local function launch_rocket(player, weapon)
 		local luaent = ent:get_luaentity()
 		luaent._player_ref = player
 		luaent._loop_sound_ref = 
-				minetest.sound_play({name="rocket_fly"}, 
-					{object=ent, max_hear_distance=32, gain=1.2, loop=true})
+				minetest.sound_play({name="spnkr_loop_"..math.random(1,3)}, 
+					{object=ent, max_hear_distance=32, gain=5.2, loop=true})
 
 		-- Commit audio suicide when attached audio stops working:tm:
 		minetest.after(15, minetest.sound_stop, luaent._loop_sound_ref)
@@ -71,8 +73,9 @@ local function launch_rocket(player, weapon)
 		
 		ent:set_velocity(rocket_vel)
 		ent:set_rotation(vector.new(-look_vertical, look_horizontal, 0))
-		weapons.veteran_reload(player, weapon, player:get_wielded_item():get_name()
-		, false)
+		if weapons.player_list[pname][ammo] == 0 then
+			weapons.veteran_reload(player, weapon, player:get_wielded_item():get_name(), false)
+		end
 	end
 end
 
@@ -85,7 +88,7 @@ local rocket_ent = {
 	physical = true,
 	collide_with_objects = true,
 	pointable = false,
-	collision_box = {-0.15, -0.15, -0.15, 0.15, 0.15, 0.15},
+	collision_box = {-0.1, -0.1, -0.1, 0.1, 0.1, 0.1},
 	visual_size = {x=5, y=5},
 	_player_ref = nil,
 	_loop_sound_ref = nil,
@@ -162,8 +165,8 @@ function rocket_ent:explode(self, moveresult)
 
 	rocket_explode_damage_blocks(pos_block)
 
-	minetest.sound_play({name="rocket_explode"}, 
-		{pos=pos_block, max_hear_distance=96, gain=7}, true)
+	minetest.sound_play({name="spnkr_explode"}, 
+		{pos=pos_block, max_hear_distance=64, gain=9}, true)
 
 	if self._loop_sound_ref ~= nil then
 		minetest.sound_stop(self._loop_sound_ref)
@@ -178,14 +181,6 @@ function rocket_ent:on_step(dtime, moveresult)
 	elseif self._timer > 15 then
 		rocket_ent:explode(self, moveresult)
 		return
-	end
-	local vel = self.object:get_velocity()
-	if vel == nil then
-	else
-		vel.x = vel.x * 1.01
-		vel.y = vel.y * 1.01
-		vel.z = vel.z * 1.01
-		self.object:set_velocity(vel)
 	end
 
 	self._timer = self._timer + dtime
@@ -236,10 +231,9 @@ weapons.register_weapon("weapons:rocket_launcher", true, {
 
 Stats:
 65 Splash Damage.
-185 Direct Hit Damage.
+125 Direct Hit Damage.
 3.4 second reload.
 Explodes after 6 seconds of flight.
-Accelerates as it moves faster.
 
 TIP: These rockets hurt you less, and can be used to propel you to greater heights.]],
 		preview = "preview_spnkrx.obj"
@@ -252,21 +246,21 @@ TIP: These rockets hurt you less, and can be used to propel you to greater heigh
 	_fov_mult = 0,
 	_fov_mult_aim = 0.5,
 	_min_arm_angle = -65,
-	_max_arm_angle = 70,
+	_max_arm_angle = 15,
 	_arm_angle_offset = 0,
 	
 	-- Sound:
-	_firing_sound = "rocket_launch",
-	_reload_sound = "rocket_reload",
-	_reload_sound_alt = "rocket_swap",
+	_firing_sound = "spnkr_fire",
+	_reload_sound = "spnkr_reload",
+	_reload_sound_alt = "spnkr_reload",
 
 	-- Base Stats:
 	_pellets = 1,
 	_mag = 2,
-	_rpm = 95,
+	_rpm = 105,
 	_reload = 3.43,
 	_damage = 65,
-	_damage_direct = 185,
+	_damage_direct = 125,
 	_movespeed = 0.75,
 	_movespeed_aim = 0.45,
 
@@ -287,6 +281,7 @@ TIP: These rockets hurt you less, and can be used to propel you to greater heigh
 		reload_alt = {x=270, y=476},
 	},
 	_arms = {
+		ph = {min=vector.new(0, 9.9, 0.35), max=vector.new(0, 8.45, -2.15), center=vector.new(0, 9.9, 0)},
 		mesh = "arms_spnkrx.x",
 		skin_pos = 1,
 		textures = {"transarent.png", "rubber.png", "steel_dark.png", "steel_grey.png^SPNKR.png", "steel_light.png", "warning_mark.png"},

@@ -73,7 +73,7 @@ minetest.register_entity("weapons:par_bolt", plas_ent)
 local function shoot_plasma(player, weapon)
 	local pname = player:get_player_name()
 	local ammo = weapon._ammo_type
-	if weapons.player_list[pname][ammo] < 100 then 
+	if weapons.player_list[pname][ammo] < 100 then
 		local plas_pos = vector.add(
 			vector.add(player:get_pos(), vector.new(0, 1.2, 0)), 
 				vector.multiply(player:get_look_dir(), 1)
@@ -161,15 +161,12 @@ Range 150 nodes.]],
 	-- Sounds
 	_firing_sound = "par_fire",
 	_reload_sound = "par_reload",
-	--_casing = "Armature_Casing",
 	
 	-- Base Stats:
 	_pellets = 1,
 	_mag = 0,
 	_rpm = wep_rpm,
 	_reload = 2.65,
-	--_speed = 1200,
-	--_range = 150,
 	_damage = 10,
 	_movespeed = 0.95,
 	_movespeed_aim = 0.45,

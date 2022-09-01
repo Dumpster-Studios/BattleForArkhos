@@ -19,16 +19,37 @@ solarsail.controls.focus = {}
 	Gets the player:get_player_control() result for [player_name]
 ]]--
 solarsail.controls.player = {}
+solarsail.controls.player_last = {}
+solarsail.controls.template = {
+	up = false,
+	down = false,
+	left = false,
+	right = false,
+	jump = false,
+	aux1 = false,
+	sneak = false,
+	dig = false,
+	place = false,
+	LMB = false,
+	RMB = false,
+	zoom = false
+}
 
-local function update_controls()
+minetest.register_globalstep(function(dtime)
 	for _, player in ipairs(minetest.get_connected_players()) do
-		solarsail.controls.player[player:get_player_name()] = player:get_player_control()
+		local pname = player:get_player_name()
+		-- This runs the risk of walking into a boolean key
+		-- but since strings are not booleans this should
+		-- be fine under "normal" circumstances.
+		if solarsail.controls.player[pname] == nil then
+			solarsail.controls.player_last[pname] = table.copy(solarsail.controls.template)
+		else
+			solarsail.controls.player_last[pname] = table.copy(solarsail.controls.player[pname])
+		end
+		solarsail.controls.player[pname] = player:get_player_control()
 	end
-	minetest.after(0.03, update_controls)
-end
+end)
 
 minetest.register_on_joinplayer(function(player)
 	solarsail.controls.focus[player:get_player_name()] = "world"
 end)
-
-minetest.after(0.03, update_controls)

@@ -17,8 +17,6 @@ Stats:
 
 12 Damage per pellet, of a total of 9 pellets.
 1 second reload when empty, 0.9 seconds when topping off.
-Unaimed spread +- 14 nodes at maximum range.
-Aimed spread +- 12 nodes at maximum range.
 Range 150 nodes.]],
 	preview = "preview_shotgun.obj"
 	},
@@ -26,8 +24,8 @@ Range 150 nodes.]],
 	-- HUD / Visual
 	_tracer = "shotgun",
 	_name = "pump_shotgun",
-	_crosshair = "shotgun_crosshair.png",
-	_crosshair_aim = "shotgun_crosshair.png",
+	_crosshair = "crosshair118.png",
+	_crosshair_aim = "crosshair118.png",
 	_fov_mult = 0,
 	_fov_mult_aim = 0.95,
 	_min_arm_angle = -45,
@@ -38,6 +36,7 @@ Range 150 nodes.]],
 	_reload_sound = "ass_rifle_reload",
 	
 	-- Base Stats:
+	_fire_mode = "semi",
 	_pellets = 9,
 	_mag = 6,
 	_rpm = wep_rpm,
@@ -56,9 +55,9 @@ Range 150 nodes.]],
 	_recoil_hori = 9,
 	_recoil_factor = 0.85,
 	_recoil_aim_factor = 0.55,
-	
-	_spread = 14,
-	_spread_aim = 12,
+
+	_offset = {pitch_min=-5, pitch_max=5, yaw_min=-5, yaw_max=5},
+	_offset_aim = {pitch_min=-4, pitch_max=4, yaw_min=-4, yaw_max=4},
 
 	_fatigue = 85,
 	_fatigue_timer = 0.12,

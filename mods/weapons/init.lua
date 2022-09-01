@@ -15,7 +15,7 @@ weapons.player_list = {} -- Current game related data
 weapons.player_data = {} -- Save data and config
 weapons.is_reloading = {} -- This should be part of player_list
 weapons.default_eye_height = 1.57 -- Defaults
-weapons.default_first_person_eyes = vector.new(0, 0, 1.5)
+weapons.default_first_person_eyes = vector.new(0, 0, 1.2)
 weapons.default_modchannel = "battleforarkhos_" -- Defaults
 
 -- Handle a one time file load at bootup to ensure data is properly loaded
@@ -187,7 +187,7 @@ function weapons.update_killfeed(player, dead_player, weapon, dist, headshot)
 		" moderated ", " banhammered ", " 13373D ",	" Flex Taped ",
 		" cronched ", " destroyed ", " blown out ", " sawn ",
 		" leeroy'd ", " inverted ", " forever boxed ", " fucky wucky'd ",
-		" locked down ", " cringed ", " light theme'd", " I II II I_ ",
+		" locked down ", " cringed ", " light theme'd ", " I II II I_ ",
 		" vaccinated ", " VAC banned "
 	}
 	local special_verbs = { "'s Ankha killed " }
@@ -232,7 +232,7 @@ function weapons.handle_damage(weapon, player, target_player, dist, pointed)
 	local pname = player:get_player_name()
 	local tname = target_player:get_player_name()
 	if weapons.player_list[tname].hp == nil then return end
-	local new_hp = weapons.player_list[tname].hp 
+	local new_hp = (weapons.player_list[tname].hp + 0)
 	local is_headshot = false
 	
 	if pointed == nil then -- Exposions, bullet magnetism are ineligible for headshots
@@ -265,16 +265,15 @@ function weapons.handle_damage(weapon, player, target_player, dist, pointed)
 	if weapon._heals == nil then
 	elseif weapon._heals > 0 then
 		if weapons.player_list[pname].team ==
-				weapons.player_list[tname].team then
-			if weapons.player_list[tname].hp < 
-				weapons.player_list[tname].hp_max * 1.25 then
-					new_hp = weapons.player_list[tname].hp + weapon._heals
-			else
-				new_hp = weapons.player_list[tname].hp_max
+			weapons.player_list[tname].team then
+			
+			new_hp = weapons.player_list[tname].hp + weapon._heals
+			if new_hp > weapons.player_list[tname].creator.hp * 1.25 then
+				new_hp = weapons.player_list[tname].creator.hp * 1.25
 			end
 		end
 	end
-
+	print(new_hp)
 	if weapons.player_list[pname].team ~=
 			weapons.player_list[tname].team then
 		if new_hp < 1 then
@@ -290,17 +289,22 @@ function weapons.handle_damage(weapon, player, target_player, dist, pointed)
 		end
 		minetest.sound_play("player_impact", {pos=target_player:get_pos(),
 			max_hear_distance=6, gain=0.85})
-	elseif pname == tname then
-		if new_hp < 1 then
-			weapons.kill_player(player, player, weapon, dist, false)
-			minetest.sound_play("player_impact", {pos=target_player:get_pos(),
-				max_hear_distance=6, gain=0.85})
+	elseif weapons.player_list[pname].team ==
+		weapons.player_list[tname].team then
+		if weapon._heals == nil then
+			if pname == tname then
+				if new_hp < 1 then
+					weapons.kill_player(player, target_player, weapon, dist, false)
+					minetest.sound_play("player_impact", {pos=target_player:get_pos(),
+						max_hear_distance=6, gain=0.85})
+				else
+					weapons.player_list[tname].hp = new_hp
+				end
+			end
 		else
-			weapons.player_list[tname].hp = new_hp
-		end
-	else
-		if weapon._heals == nil then return 
-		else
+			if new_hp < 1 then
+				new_hp = 1
+			end
 			weapons.player_list[tname].hp = new_hp
 			weapons.hud.render_hitmarker(player, true)
 			minetest.sound_play("hitsound", {to_player=pname})
@@ -382,6 +386,7 @@ dofile(minetest.get_modpath("weapons").."/weapons/light_machine_gun.lua")
 -- Exotic (Treated as Primary Slot)
 dofile(minetest.get_modpath("weapons").."/weapons/rocketry.lua")
 dofile(minetest.get_modpath("weapons").."/weapons/minigun.lua")
+dofile(minetest.get_modpath("weapons").."/weapons/big_shot.lua")
 
 -- Secondary
 dofile(minetest.get_modpath("weapons").."/weapons/boringpistol.lua")

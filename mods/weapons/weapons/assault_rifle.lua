@@ -101,7 +101,7 @@ local function add_extras(player)
 	ent:set_velocity(vector.add(pvel, vel))
 end
 
-local wep_rpm = 500
+local wep_rpm = 450
 local shots_used = 1
 
 weapons.register_weapon("weapons:assault_rifle", true,
@@ -120,8 +120,6 @@ Stats:
 
 25 Damage.
 2.65 second reload.
-Unaimed spread +- 7 nodes at maximum range.
-Aimed spread +- 0.5 nodes at maximum range.
 Range 150 nodes.]],
 	},
 
@@ -129,8 +127,8 @@ Range 150 nodes.]],
 	_tracer = "ar",
 	_name = "assault_rifle",
 	_ammo_bg = "bullet_bg",
-	_crosshair = "assault_crosshair.png",
-	_crosshair_aim = "railgun_crosshair.png",
+	_crosshair = "crosshair010.png",
+	_crosshair_aim = "crosshair008.png",
 	_fov_mult = 0,
 	_fov_mult_aim = 0.6,
 	_min_arm_angle = -45,
@@ -142,6 +140,7 @@ Range 150 nodes.]],
 	_casing = "Armature_Casing",
 	
 	-- Base Stats:
+	_fire_mode = "auto",
 	_pellets = 1,
 	_mag = 30,
 	_rpm = wep_rpm,
@@ -160,15 +159,15 @@ Range 150 nodes.]],
 	_recoil_factor = 0.8,
 	_recoil_aim_factor = 0.5,
 
-	_fatigue = 15,
+	_fatigue = 20,
 	_fatigue_timer = 0.06,
 	_fatigue_recovery = 0.85,
-	
-	_spread = 7,
-	_spread_aim = 2.5,
 
-	_break_hits = 2,
-	_block_chance = 85,
+	_offset = {pitch_min=-1.35, pitch_max=1.35, yaw_min=-1.35, yaw_max=1.35},
+	_offset_aim = {pitch_min=-0.35, pitch_max=0.35, yaw_min=-0.35, yaw_max=0.35},
+
+	_break_hits = 1,
+	_block_chance = 55,
 
 	-- Arm Animations + Arm visual settings;
 	_anim = {

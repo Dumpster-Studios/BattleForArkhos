@@ -56,30 +56,40 @@ local function raycast_minigun(player, weapon)
 			weapon.on_fire_visual(player)
 		end
 
+		local pyaw = player:get_look_horizontal()
+		local ppit = player:get_look_vertical()
 		for i=1, weapon._pellets do
 			-- Ray calculations.
 			local raybegin = vector.add(player:get_pos(), {x=0, y=weapons.default_eye_height, z=0})
-			local raygunbegin = vector.add(player:get_pos(), {x=0, y=1.2, z=0})
-			local vec_x, vec_y, vec_z = 0, 0, 0
+			local vec_x, vec_y, vec_z
 
-			local _spread = solarsail.util.functions.remap(weapons.player_list[pname][ammo], 0, 100, weapon._spread, weapon._spread_max)
-			local _spread_aim = solarsail.util.functions.remap(weapons.player_list[pname][ammo], 0, 100, weapon._spread_aim, weapon._spread_aim_max)
-
+			local fatigue_mult = 1 + (weapons.player_list[pname].fatigue / 100)
+			
 			-- Handle aiming
+			local myaw, mpitch = 0, 0
 			if weapons.player_list[pname].aim_mode then
-				vec_x = math.random(-_spread_aim * 100, _spread_aim * 100) / 100
-				vec_y = math.random(-_spread_aim * 100, _spread_aim * 100) / 100
-				vec_z = math.random(-_spread_aim * 100, _spread_aim * 100) / 100
+				if weapon._offset_aim == nil then
+					myaw = math.random(weapon._spread_aim*-100, weapon._spread_aim*100) / 100
+					mpitch = math.random(weapon._spread_aim*-100, weapon._spread_aim*100) / 100
+				else
+					myaw = math.random(weapon._offset_aim.yaw_min*100, weapon._offset_aim.yaw_max*100) / 100
+					mpitch = math.random(weapon._offset_aim.pitch_min*100, weapon._offset_aim.pitch_max*100) / 100
+				end
 			else
-				vec_x = math.random(-_spread * 100, _spread * 100) / 100
-				vec_y = math.random(-_spread * 100, _spread * 100) / 100
-				vec_z = math.random(-_spread * 100, _spread * 100) / 100
+				if weapon._offset == nil then
+					myaw = math.random(weapon._spread*-100, weapon._spread_aim*100) / 100
+					mpitch = math.random(weapon._spread*-100, weapon._spread_aim*100) / 100
+				else
+					myaw = (math.random(weapon._offset.yaw_min*100, weapon._offset.yaw_max*100) / 100)
+					mpitch = math.random(weapon._offset.pitch_min*100, weapon._offset.pitch_max*100) / 100
+				end
 			end
-			local aim_mod = {x=vec_x, y=vec_y, z=vec_z}
-			local raymod = vector.add(
-				vector.multiply(player:get_look_dir(), weapon._range), aim_mod
-			)
-			local rayend = vector.add(raybegin, raymod)
+
+			fyaw = pyaw + math.rad(myaw * fatigue_mult)
+			fpit = ppit + math.rad(mpitch * fatigue_mult)
+			local new_look = solarsail.util.functions.look_vector(fyaw, fpit)
+
+			local rayend = vector.add(raybegin,	vector.multiply(new_look, weapon._range))
 			local ray = minetest.raycast(raybegin, rayend, true, false)
 			local pointed = ray:next()
 			pointed = ray:next()
@@ -87,30 +97,22 @@ local function raycast_minigun(player, weapon)
 
 			if weapon._tracer == nil then
 			else
-				local tracer_pos = vector.add(
-					vector.add(player:get_pos(), vector.new(0, 1.2, 0)), 
-						vector.multiply(player:get_look_dir(), 1)
-				)
-				local yp = solarsail.util.functions.y_direction(player:get_look_vertical(), 20)
-				local px, pz = solarsail.util.functions.yaw_to_vec(player:get_look_horizontal(), 20, false)
-				local pv = vector.add(raybegin, {x=px, y=yp, z=pz})
-				local pr = vector.add(pv, raymod)
+				local tracer_pos = vector.add(raybegin, vector.multiply(new_look, 1))
 
-				local tracer_vel = vector.add(
-					vector.multiply(vector.direction(pv, pr), 120), 
-						vector.new(0, 0.44, 0)
-				)
-				
-				local xz, y = solarsail.util.functions.get_3d_angles(
-					vector.add(player:get_pos(), vector.new(0, weapons.default_eye_height, 0)),
-					vector.add(tracer_pos, tracer_vel)				
-				)
+				local tracer_vel = vector.multiply(vector.direction(raybegin, rayend), 120)
+				local xz, y = solarsail.util.functions.get_3d_angles(raybegin, rayend)
 
 				local ent = minetest.add_entity(tracer_pos, 
 								"weapons:tracer_" .. weapon._tracer)
 
+
 				ent:set_velocity(tracer_vel)
-				ent:set_rotation(vector.new(y, xz, 0))
+				local tracer_rot = vector.new(
+					-fpit,
+					fyaw,
+					0
+				)
+				ent:set_rotation(tracer_rot)
 			end
 
 			if pointed == nil then
@@ -189,8 +191,6 @@ Stats:
 
 5 Damage.
 Infinite Ammo!.
-Unaimed spread +- 8 nodes at maximum range.
-Aimed spread +- 1 nodes at maximum range.
 Range 125 nodes.]],
 	},
 
@@ -231,13 +231,11 @@ Range 125 nodes.]],
 
 	-- Not required, but to avoid crashes where data is nil.
 	_fatigue = 15,
-	_fatigue_timer = 0.06,
+	_fatigue_timer = 0.12,
 	_fatigue_recovery = 0.85, 
-	
-	_spread = 4.5,
-	_spread_max = 14,
-	_spread_aim = 0.25,
-	_spread_aim_max = 4.5,
+
+	_offset = {pitch_min=-2.95, pitch_max=2.95, yaw_min=-2.95, yaw_max=2.95},
+	_offset_aim = {pitch_min=-2.05, pitch_max=2.05, yaw_min=-2.05, yaw_max=2.05},
 
 	_break_hits = 1,
 	_block_chance = 55,

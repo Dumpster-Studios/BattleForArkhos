@@ -6,7 +6,14 @@
 particulate = {}
 particulate.known_particles = {}
 
-function particulate.register_cubic_particle(name, definition, physics, factor, sound_name, sound_def)
+function particulate.register_cubic_particle(name, definition, physics, factor, sound_name, sound_def, register)
+	local reg_ent
+	if register == nil then
+		reg_end = false
+	else
+		reg_end = register
+	end
+
 	local def = table.copy(definition)
 	def.visual = "mesh"
 	def.mesh = "particulate_cubic.obj"
@@ -172,12 +179,12 @@ function particulate.prefab_bouncing_particle(factor)
 			self.object:set_velocity(velocity)
 		end
 	
-		local norm = self.object:get_velocity()
-		norm.x = norm.x * 0.66
-		norm.y = norm.y * 0.66
-		norm.z = norm.z * 0.66
-		rot.z = rot.z + ((norm.x + norm.z) / 3)
-		self.object:set_rotation(rot)
+		-- local norm = self.object:get_velocity()
+		-- norm.x = norm.x * 0.66
+		-- norm.y = norm.y * 0.66
+		-- norm.z = norm.z * 0.66
+		-- rot.z = rot.z + ((norm.x + norm.z) / 3)
+		--self.object:set_rotation(rot)
 
 		if self._timer > self._ttl then
 			if math.random(1, 10) == 1 then
@@ -245,28 +252,28 @@ function particulate.prefab_bouncing_alt_particle(factor)
 			self.object:set_velocity(velocity)
 		end
 	
-		local norm = self.object:get_velocity()
-		norm.x = norm.x * 0.66
-		norm.y = norm.y * 0.66
-		norm.z = norm.z * 0.66
-		rot.z = rot.z + ((norm.x + norm.z) / 3)
-		self.object:set_rotation(rot)
+		-- local norm = self.object:get_velocity()
+		-- norm.x = norm.x * 0.66
+		-- norm.y = norm.y * 0.66
+		-- norm.z = norm.z * 0.66
+		-- rot.z = rot.z + ((norm.x + norm.z) / 3)
+		--self.object:set_rotation(rot)
 	
-		if self._timer > self._effect_timer then
-			local props = self.object:get_properties()
-			if props == nil then
-				return
-			elseif props.visual_size == nil then
-				return
-			end
+		-- if self._timer > self._effect_timer then
+		-- 	local props = self.object:get_properties()
+		-- 	if props == nil then
+		-- 		return
+		-- 	elseif props.visual_size == nil then
+		-- 		return
+		-- 	end
 			
-			props.visual_size.x = props.visual_size.x * 0.985
-			props.visual_size.y = props.visual_size.y * 0.985
-			props.visual_size.z = props.visual_size.z * 0.985
+		-- 	props.visual_size.x = props.visual_size.x * 0.985
+		-- 	props.visual_size.y = props.visual_size.y * 0.985
+		-- 	props.visual_size.z = props.visual_size.z * 0.985
 			
-			props.collisionbox = particulate.calc_collisionbox_size(props.visual_size.x)
-			self.object:set_properties(props)
-		end
+		-- 	props.collisionbox = particulate.calc_collisionbox_size(props.visual_size.x)
+		-- 	--self.object:set_properties(props)
+		-- end
 
 		if self._timer > self._ttl then
 			if math.random(1, 10) == 1 then
@@ -285,25 +292,25 @@ end
 
 function particulate.prefab_smoke_particle(factor)
 	local function onstep(self, dtime, moveresult)
-		local rot = self.object:get_rotation()
-		local norm = self.object:get_velocity()
-		norm.x = norm.x * 0.66
-		norm.y = norm.y * 0.66
-		norm.z = norm.z * 0.66
-		rot.z = rot.z + ((norm.x + norm.z + norm.y) / 15)
-		self.object:set_rotation(rot)
+		--local rot = self.object:get_rotation()
+		--local norm = self.object:get_velocity()
+		--norm.x = norm.x * 0.66
+		--norm.y = norm.y * 0.66
+		--norm.z = norm.z * 0.66
+		--rot.z = rot.z + ((norm.x + norm.z + norm.y) / 15)
+		--self.object:set_rotation(rot)
 	
-		local props = self.object:get_properties()
-		if props == nil then
-			return
-		elseif props.visual_size == nil then
-			return
-		end
+		--local props = self.object:get_properties()
+		--if props == nil then
+		--	return
+		--elseif props.visual_size == nil then
+		--	return
+		--end
 		
-		props.visual_size.x = props.visual_size.x * 1.007
-		props.visual_size.y = props.visual_size.y * 1.007
-		props.visual_size.z = props.visual_size.z * 1.007
-		self.object:set_properties(props)
+		-- props.visual_size.x = props.visual_size.x * 1.007
+		-- props.visual_size.y = props.visual_size.y * 1.007
+		-- props.visual_size.z = props.visual_size.z * 1.007
+		--self.object:set_properties(props)
 	
 		if self._timer > self._ttl then
 			if math.random(1, 10) == 1 then

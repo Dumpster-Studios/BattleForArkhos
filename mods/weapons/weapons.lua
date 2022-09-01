@@ -155,7 +155,8 @@ function weapons.finish_energy_weapon(player, weapon, wieldname, oneic)
 		return
 	elseif weapons.is_reloading[pname][wieldname] then
 		weapons.is_reloading[pname][wieldname] = false
-
+		local ammo = weapon._ammo_type
+		weapons.player_list[pname][ammo] = 0
 		-- Avoid sending HUD updates unless needed
 		if weapon._no_reload_hud then
 		else
@@ -243,37 +244,40 @@ function weapons.raycast_bullet(player, weapon)
 			weapon.on_fire_visual(player)
 		end
 
+		local pyaw = player:get_look_horizontal()
+		local ppit = player:get_look_vertical()
 		for i=1, weapon._pellets do
 			-- Ray calculations.
 			local raybegin = vector.add(player:get_pos(), {x=0, y=weapons.default_eye_height, z=0})
-			local raygunbegin = vector.add(player:get_pos(), {x=0, y=1.2, z=0})
 			local vec_x, vec_y, vec_z
 
+			local fatigue_mult = 1 + (weapons.player_list[pname].fatigue / 100)
+			
 			-- Handle aiming
-			local fatigue_mult = weapons.player_list[pname].fatigue / 100
-			if weapons.player_list[pname].fatigue < weapon._fatigue then
-				-- This only applies to shotguns.
-				if weapon._pellets > 1 then
-					fatigue_mult = (weapon._fatigue/2.5) / 100
+			local myaw, mpitch = 0, 0
+			if weapons.player_list[pname].aim_mode then
+				if weapon._offset_aim == nil then
+					myaw = math.random(weapon._spread_aim*-100, weapon._spread_aim*100) / 100
+					mpitch = math.random(weapon._spread_aim*-100, weapon._spread_aim*100) / 100
+				else
+					myaw = math.random(weapon._offset_aim.yaw_min*100, weapon._offset_aim.yaw_max*100) / 100
+					mpitch = math.random(weapon._offset_aim.pitch_min*100, weapon._offset_aim.pitch_max*100) / 100
+				end
+			else
+				if weapon._offset == nil then
+					myaw = math.random(weapon._spread*-100, weapon._spread_aim*100) / 100
+					mpitch = math.random(weapon._spread*-100, weapon._spread_aim*100) / 100
+				else
+					myaw = (math.random(weapon._offset.yaw_min*100, weapon._offset.yaw_max*100) / 100)
+					mpitch = math.random(weapon._offset.pitch_min*100, weapon._offset.pitch_max*100) / 100
 				end
 			end
-			if weapons.player_list[pname].aim_mode then
-				local spread = weapon._spread_aim * fatigue_mult
-				vec_x = math.random(-spread * 100, spread * 100) / 100
-				vec_y = math.random(-spread * 100, spread * 100) / 100
-				vec_z = math.random(-spread * 100, spread * 100) / 100
-			else
-				local spread = weapon._spread * fatigue_mult
-				vec_x = math.random(-spread * 100, spread * 100) / 100
-				vec_y = math.random(-spread * 100, spread * 100) / 100
-				vec_z = math.random(-spread * 100, spread * 100) / 100
-			end
 
-			local aim_mod = {x=vec_x, y=vec_y, z=vec_z}
-			local raymod = vector.add(
-				vector.multiply(player:get_look_dir(), weapon._range), aim_mod
-			)
-			local rayend = vector.add(raybegin, raymod)
+			local fyaw = pyaw + math.rad(myaw * fatigue_mult)
+			local fpit = ppit + math.rad(mpitch * fatigue_mult)
+			local new_look = solarsail.util.functions.look_vector(fyaw, fpit)
+
+			local rayend = vector.add(raybegin,	vector.multiply(new_look, weapon._range))
 			local ray = minetest.raycast(raybegin, rayend, true, false)
 			local pointed = ray:next()
 			pointed = ray:next()
@@ -281,30 +285,22 @@ function weapons.raycast_bullet(player, weapon)
 
 			if weapon._tracer == nil then
 			else
-				local tracer_pos = vector.add(
-					vector.add(player:get_pos(), vector.new(0, 1.2, 0)), 
-						vector.multiply(player:get_look_dir(), 1)
-				)
-				local yp = solarsail.util.functions.y_direction(player:get_look_vertical(), 20)
-				local px, pz = solarsail.util.functions.yaw_to_vec(player:get_look_horizontal(), 20, false)
-				local pv = vector.add(raybegin, {x=px, y=yp, z=pz})
-				local pr = vector.add(pv, raymod)
+				local tracer_pos = vector.add(raybegin, vector.multiply(new_look, 1))
 
-				local tracer_vel = vector.add(
-					vector.multiply(vector.direction(pv, pr), 120), 
-						vector.new(0, 0.44, 0)
-				)
-				
-				local xz, y = solarsail.util.functions.get_3d_angles(
-					vector.add(player:get_pos(), vector.new(0, weapons.default_eye_height, 0)),
-					vector.add(tracer_pos, tracer_vel)				
-				)
+				local tracer_vel = vector.multiply(vector.direction(raybegin, rayend), 120)
+				local xz, y = solarsail.util.functions.get_3d_angles(raybegin, rayend)
 
 				local ent = minetest.add_entity(tracer_pos, 
 								"weapons:tracer_" .. weapon._tracer)
 
+
 				ent:set_velocity(tracer_vel)
-				ent:set_rotation(vector.new(y, xz, 0))
+				local tracer_rot = vector.new(
+					-fpit,
+					fyaw,
+					0
+				)
+				ent:set_rotation(tracer_rot)
 			end
 
 			if pointed == nil then
@@ -335,21 +331,17 @@ function weapons.raycast_bullet(player, weapon)
 end
 
 function weapons.bullet_on_hit(pointed, player, weapon, target_pos, dist)
+	local pname = player:get_player_name()
 	if pointed.type == "object" then
 		local t_pos = pointed.ref:get_pos()
 		if t_pos == nil then return end
-		local diff = solarsail.util.functions.pos_to_dist(t_pos, target_pos)
-		if diff < 0.31 then
-			if pointed.ref:is_player() then
-				weapons.handle_damage(weapon, player, pointed.ref, dist, pointed)
-			end
-		end
+		weapons.handle_damage(weapon, player, pointed.ref, dist, pointed)
 	else
 		for _, players in ipairs(minetest.get_connected_players()) do
-			if player:get_player_name() ~= players:get_player_name() then
+			if pname ~= players:get_player_name() then
 				local ppos = players:get_pos()
 				local splash_dist = solarsail.util.functions.pos_to_dist(ppos, pointed.intersection_point)
-				if splash_dist < 0.61 then
+				if math.abs(splash_dist) < 0.61 then
 					weapons.handle_damage(weapon, player, players, dist, nil)
 					return
 				end
@@ -588,17 +580,21 @@ minetest.register_globalstep(function(dtime)
 			if weapon._fatigue_recovery == nil then
 				error("weapon: " .. weapon._localisation.itemstring .. " missing ._fatigue_recovery")
 			end
+			local recover_fatigue = false
 			if weapons.is_reloading[pname][ammo] then
-				if weapons.player_list[pname].fatigue > 0 then
-					weapons.player_list[pname].fatigue = weapons.player_list[pname].fatigue * weapon._fatigue_recovery
-				end
+				recover_fatigue = true
 			elseif not solarsail.controls.player[pname].LMB then
+				recover_fatigue = true
+			-- Special case for semi auto weapons where firing the weapon can be considered safe
+			elseif solarsail.controls.player[pname].LMB and (weapon._fire_mode == "semi" and not solarsail.controls.player_last[pname].LMB) then
+				recover_fatigue = true
+			end
+			if recover_fatigue then
 				if weapons.player_list[pname].fatigue <= 0.01 then
 					weapons.player_list[pname].fatigue = 0
 				elseif weapons.player_list[pname].fatigue > 0.01 then
 					weapons.player_list[pname].fatigue = weapons.player_list[pname].fatigue * weapon._fatigue_recovery
 				end
-			else
 			end
 			player_fatigue_timer[pname] = 0
 		end

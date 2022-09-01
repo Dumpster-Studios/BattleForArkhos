@@ -37,16 +37,14 @@ Stats:
 
 10 Damage.
 6.65 second reload.
-Unaimed spread +- 15 nodes at maximum range.
-Aimed spread +- 2 nodes at maximum range.
 Range 125 nodes.]],
 	},
 
 	-- HUD / Visual
 	_tracer = "ar",
 	_name = "light_machine_gun",
-	_crosshair = "assault_crosshair.png",
-	_crosshair_aim = "assault_crosshair.png",
+	_crosshair = "crosshair027.png",
+	_crosshair_aim = "crosshair027.png",
 	_fov_mult = 0,
 	_fov_mult_aim = 0.6,
 	_min_arm_angle = -45,
@@ -75,9 +73,9 @@ Range 125 nodes.]],
 	_recoil_hori = 6,
 	_recoil_factor = 0.8,
 	_recoil_aim_factor = 0.5,
-	
-	_spread = 15,
-	_spread_aim = 2,
+
+	_offset = {pitch_min=-2.35, pitch_max=2.35, yaw_min=-2.35, yaw_max=2.35},
+	_offset_aim = {pitch_min=-0.55, pitch_max=0.55, yaw_min=-0.55, yaw_max=0.55},
 
 	_fatigue = 3,
 	_fatigue_timer = 0.09,

@@ -383,6 +383,7 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 			end
 			weapons.creator.creator_to_class(player, pname)
 		elseif fields.quit == "true" then
+			-- Prevent escaping newly joined playerse
 			if weapons.player_list[pname].texture == nil then
 				minetest.after(0.06, weapons.creator.display_formspec, pname, player, fields)
 			else
@@ -399,9 +400,7 @@ local function clear_inv(player)
 	p_inv:set_list("main", {})
 	p_inv:set_list("craft", {})
 end
-
 weapons.clear_inv = clear_inv
-
 
 local function add_class_items(player, class_items)
 	local items = class_items or base_class.items
@@ -458,7 +457,7 @@ local function set_ammo(player, class_items)
 					weapons.player_list[pname][weapon._ammo_type .. "_max"] = weapon._mag
 					weapons.player_list[pname][weapon._ammo_type .. "_energy"] = false
 				elseif weapon._is_energy then
-					weapons.player_list[pname][weapon._ammo_type] = 0
+					weapons.player_list[pname][weapon._ammo_type] = 1
 					weapons.player_list[pname][weapon._ammo_type .. "_max"] = 100
 					weapons.player_list[pname][weapon._ammo_type .. "_energy"] = true
 				else
@@ -474,7 +473,6 @@ local function set_ammo(player, class_items)
 	weapons.player_list[pname].fatigue = 0
 	weapons.player_list[pname].fatigue_max = 100
 end
-
 
 function weapons.get_tex_size(file) -- ported from a fork
 	local file = io.open(file)
@@ -541,8 +539,8 @@ weapons.set_ammo = set_ammo
 
 local function set_health(player, class)
 	local pname = player:get_player_name()
-	weapons.player_list[pname].hp = base_class.stats.hp
-	weapons.player_list[pname].hp_max = base_class.stats.hp
+	weapons.player_list[pname].hp = weapons.player_list[pname].creator.hp
+	weapons.player_list[pname].hp_max = weapons.player_list[pname].creator.hp
 	weapons.hud.force_hp_refresh(player)
 end
 
@@ -749,8 +747,8 @@ minetest.register_globalstep(function(dtime)
 		local pname = player:get_player_name()
 		local wield = player:get_wielded_item():get_name()
 		local weapon = minetest.registered_nodes[wield]
+		local ppitch = -math.deg(player:get_look_vertical())
 		if true then -- Legs/Body, Head anim; foldable for your viewing pleasure
-			local ppitch = -math.deg(player:get_look_vertical())
 			local frame_offset = 0
 			local anim_group
 			if look_pitch[pname] ~= ppitch then
@@ -781,20 +779,36 @@ minetest.register_globalstep(function(dtime)
 						look_pitch[pname] = ret_pitch+0
 					end
 				else
+					-- Prevent arm rotations when the entity doesn't
+					-- exist
 					if weapons.player_arms[pname] ~= nil then
-						-- Prevent arm rotations when the entity doesn't
-						-- exist
+						-- Prevent rotations when reloading
 						if weapons.is_reloading[pname][wield] then
 						else
-							if ppitch > weapon._max_arm_angle then
-								ppitch = weapon._max_arm_angle
-							elseif ppitch < weapon._min_arm_angle then
-								ppitch = weapon._min_arm_angle
-							end
+							-- if ppitch > weapon._max_arm_angle then
+							-- 	ppitch = weapon._max_arm_angle
+							-- elseif ppitch < weapon._min_arm_angle then
+							-- 	ppitch = weapon._min_arm_angle
+							-- end
 							--Manually control arms bone here
 							local bpos = arms_pos
 							if weapon._arms.pos ~= nil then
 								bpos = weapon._arms.pos
+							end
+
+							-- Drumfill sounds
+							if weapon._arms.ph ~= nil then
+								local ph
+								-- Blend between arm states
+								if ppitch < 0 then
+									local pf = solarsail.util.functions.remap(ppitch, -90, 0, 0, 1)
+									ph = solarsail.util.functions.lerp_vectors(weapon._arms.ph.min, weapon._arms.ph.center, pf)
+								else
+									local pf = solarsail.util.functions.remap(ppitch, 0, 90, 0, 1)
+									ph = solarsail.util.functions.lerp_vectors(weapon._arms.ph.center, weapon._arms.ph.max, pf)
+								end
+								
+								bpos = ph
 							end
 							weapons.player_arms[pname]:set_bone_position(
 								"Armature_Root",
@@ -889,6 +903,16 @@ minetest.register_globalstep(function(dtime)
 			if weapon == nil then
 			else
 				local ammo = weapon._ammo_type
+				local anim_test = false
+				local loop_anim = true
+				if weapon._fire_mode == "semi" and not solarsail.controls.player_last[pname].LMB then
+					anim_test = true
+					loop_anim = false
+				elseif weapon._fire_mode == "auto" then
+					anim_test = true
+				elseif weapon._fire_mode == nil then
+					anim_test = true
+				end
 				if weapon._anim == nil then
 				elseif arm_frame[pname] == -1 then
 					if weapons.is_reloading[pname][wield] == nil then
@@ -905,38 +929,51 @@ minetest.register_globalstep(function(dtime)
 							arm_type[pname] = "reload_alt"
 							arm_after[pname] = minetest.after((weapon._reload*0.9), unlock_arms, pname, weapon)
 							if weapons.player_arms[pname] ~= nil then
+								
 								weapons.player_arms[pname]:set_animation(weapon._anim.reload_alt, 60, 0.15, true)
 							end
 						end
 					elseif solarsail.controls.player[pname].RMB then -- Handle aiming
-						if solarsail.controls.player[pname].LMB then
-							if weapons.player_list[pname][ammo] > 0 or ammo == "blocks" then
-								arm_frame[pname] = 0
-								arm_type[pname] = "aim_fire"
-								arm_after[pname] = minetest.after((60 / weapon._rpm), unlock_arms, pname, weapon)
-								if weapons.player_arms[pname] ~= nil then
-									weapons.player_arms[pname]:set_animation(weapon._anim.aim_fire, 60, 0.15, true)
+						if solarsail.controls.player[pname].LMB and 
+						((weapon._fire_mode == "semi" and not solarsail.controls.player_last[pname].LMB) or 
+						(weapon._fire_mode == "auto" or weapon._fire_mode == nil)) then -- Handle firing
+							if weapons.player_list[pname][ammo] > 0 then
+								if anim_test then
+									arm_frame[pname] = 0
+									arm_type[pname] = "aim_fire"
+									arm_after[pname] = minetest.after((60 / weapon._rpm), unlock_arms, pname, weapon)
+									if weapons.player_arms[pname] ~= nil then
+										local anim = weapon._anim.aim_fire
+										weapons.player_arms[pname]:set_animation(anim, 60, 0.15, loop_anim)
+									end
 								end
 							end
-						else
+						else -- Idle
 							if weapons.player_arms[pname] ~= nil then
-								weapons.player_arms[pname]:set_animation(weapon._anim.aim, 60, 0.15, true)
+								local anim = weapon._anim.aim
+								weapons.player_arms[pname]:set_animation(anim, 60, 0.15, true)
 							end
 						end
-					else
-						if solarsail.controls.player[pname].LMB then
-							if weapons.player_list[pname][ammo] > 0 or ammo == "blocks" then
-								arm_frame[pname] = 0
-								arm_type[pname] = "idle_fire"
-								arm_after[pname] = minetest.after((60 / weapon._rpm), unlock_arms, pname, weapon)
-								if weapons.player_arms[pname] ~= nil then
-									weapons.player_arms[pname]:set_animation(weapon._anim.idle_fire, 60, 0.15, true)
+					else -- Idle
+						if solarsail.controls.player[pname].LMB and 
+						((weapon._fire_mode == "semi" and not solarsail.controls.player_last[pname].LMB) or 
+						(weapon._fire_mode == "auto" or weapon._fire_mode == nil)) then -- Handle firing
+							if weapons.player_list[pname][ammo] > 0 then
+								if anim_test then
+									arm_frame[pname] = 0
+									arm_type[pname] = "idle_fire"
+									arm_after[pname] = minetest.after((60 / weapon._rpm), unlock_arms, pname, weapon)
+									if weapons.player_arms[pname] ~= nil then
+										local anim = weapon._anim.idle_fire
+										weapons.player_arms[pname]:set_animation(anim, 60, 0.15, loop_anim)
+									end
 								end
 							end
-						else
+						else -- Idle
 							arm_type[pname] = "idle"
 							if weapons.player_arms[pname] ~= nil then
-								weapons.player_arms[pname]:set_animation(weapon._anim.idle, 60, 0.15, true)
+								local anim = weapon._anim.idle
+								weapons.player_arms[pname]:set_animation(anim, 60, 0.15, true)
 							end
 						end
 					end

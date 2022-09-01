@@ -56,6 +56,14 @@ function solarsail.util.functions.lerp(var_a, var_b, ratio)
 	return (1-ratio)*var_a + (ratio*var_b)
 end
 
+function solarsail.util.functions.lerp_vectors(vec_a, vec_b, ratio)
+	return vector.new(
+		(1-ratio)*vec_a.x + (ratio*vec_b.x),
+		(1-ratio)*vec_a.y + (ratio*vec_b.y),
+		(1-ratio)*vec_a.z + (ratio*vec_b.z)
+	)
+end
+
 --[[
 	solarsail.util.functions.remap()
 	
@@ -180,6 +188,16 @@ function solarsail.util.functions.pos_to_dist(pos_1, pos_2)
 	res.y = (pos_1.y - pos_2.y)
 	res.z = (pos_1.z - pos_2.z)
 	return math.sqrt(res.x*res.x + res.y*res.y + res.z*res.z)
+end
+
+-- Converts yaw and pitch to a vector.new(x,y,z) provided by player:get_look_dir()
+-- must be radians
+function solarsail.util.functions.look_vector(yaw, pitch)
+	return vector.new(
+		-(math.sin(yaw) * math.cos(pitch)),
+		-math.sin(pitch),
+		math.cos(yaw) * math.cos(pitch)
+	)
 end
 
 function weapons.calc_block_damage(nodedef, weapon, target_pos, pointed)

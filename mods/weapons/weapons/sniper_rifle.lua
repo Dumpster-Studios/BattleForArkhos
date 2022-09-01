@@ -17,8 +17,6 @@ Stats:
 
 85 Damage.
 5.3 second reload.
-Unaimed spread +- 25 nodes at maximum range.
-Aimed spread +- 0 nodes at maximum range.
 Range 250 nodes.]],
 	},
 
@@ -26,7 +24,7 @@ Range 250 nodes.]],
 	_tracer = "railgun",
 	_name = "sniper_rifle",
 	_crosshair = "sniper_unaim.png",
-	_crosshair_aim = "railgun_crosshair.png",
+	_crosshair_aim = "crosshair022.png",
 	_fov_mult = 0,
 	_fov_mult_aim = 0.2,
 	_min_arm_angle = -45,
@@ -38,6 +36,7 @@ Range 250 nodes.]],
 	_casing = "Armature_Casing",
 	
 	-- Base Stats:
+	_fire_mode = "semi",
 	_pellets = 1,
 	_mag = 5,
 	_rpm = wep_rpm,
@@ -57,8 +56,8 @@ Range 250 nodes.]],
 	_recoil_factor = 1,
 	_recoil_aim_factor = 0.8,
 	
-	_spread = 25,
-	_spread_aim = 0,
+	_offset = {pitch_min=-12.5, pitch_max=12.5, yaw_min=-12.5, yaw_max=12.5},
+	_offset_aim = {pitch_min=-0.01, pitch_max=0.01, yaw_min=-0.01, yaw_max=0.01},
 
 	_fatigue = 75,
 	_fatigue_timer = 0.06,

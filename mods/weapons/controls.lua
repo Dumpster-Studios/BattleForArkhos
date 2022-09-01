@@ -112,23 +112,36 @@ minetest.register_globalstep(function(dtime)
 			elseif weapon._name == nil then
 			elseif weapon._rpm == nil then
 			elseif player_timers[pname].fire > (60 / weapon._rpm) / rpm_modifier  then
-				if solarsail.controls.player[pname].LMB then
-					player_timers[pname].fire = 0
+				if solarsail.controls.player[pname].LMB or weapon._uses_mouse_up then
+					local can_fire = false
+					-- Semi auto checks here
+					if weapon._fire_mode == "semi" and not solarsail.controls.player_last[pname].LMB then
+						can_fire = true
+						player_timers[pname].fire = 0
+					elseif weapon._fire_mode == "auto" then
+						can_fire = true
+						player_timers[pname].fire = 0
+					elseif weapon._fire_mode == nil then
+						can_fire = true
+						player_timers[pname].fire = 0
+					end
 					if weapon._type == "gun" then
 						local ammo = weapon._ammo_type
 						if weapons.player_list[pname][ammo] >= 0 then
-							if not weapons.is_reloading[pname][wield] then
+							if not weapons.is_reloading[pname][wield] and can_fire then
 								weapon.on_fire(player, weapon)
 							end
 						end
 					elseif weapon._type == "block" then
 						-- TODO: Move to custom on_place function
 						if weapons.player_list[player:get_player_name()].blocks > 0 then
-							weapon.on_fire(player, weapon)
-							weapons.player_list[player:get_player_name()].blocks = 
-								weapons.player_list[player:get_player_name()].blocks - 1
+							if can_fire then
+								weapon.on_fire(player, weapon)
+								weapons.player_list[player:get_player_name()].blocks = 
+									weapons.player_list[player:get_player_name()].blocks - 1
+							end
 						end
-					else
+					elseif can_fire then
 						weapon.on_fire(player, weapon)
 					end
 				end
